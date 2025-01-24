@@ -20,7 +20,7 @@ All while reflecting the **unique needs and culture of the University of Florida
 ---
 
 ## **Team Members**  
-- **Harshavardhan Chary Vadla** - **Frontend**  
-- **Akash Challa** - **Frontend**  
-- **Gautam** - **Backend**  
-- **Keerthana Dungala** - **Backend**  
+- **Harshavardhan Chary Vadla (UFID- 15764530)** - **Frontend**  
+- **Akash Challa (UFID- 51281562)** - **Frontend**  
+- **Gautham Varma Kucharlapati (UFID- 52957224)** - **Backend**  
+- **Keerthana Dungala (UFID- 57210215)** - **Backend**
