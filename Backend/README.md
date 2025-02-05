@@ -9,5 +9,7 @@ SQLite
 
 ## Steps to run backend server-
 `cd Backend`
+
 `go mod tidy`
+
 `go run main.go`
