@@ -5,6 +5,7 @@ This is the backend for the GatorHive platform, a web application for managing a
 Before you can run the backend server, ensure that you have the following installed:
 
 Go (1.18 or higher)
+
 SQLite
 
 ## Steps to run backend server-
