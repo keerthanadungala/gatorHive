@@ -4,7 +4,7 @@ Follow these steps to **set up and run** the **GatorHive frontend** project on y
 
 ## 📌 How to Run the Frontend 
 
-### 1️⃣ Clone the Repository
+### 1 Clone the Repository
 If you haven't already cloned the repository, run:
 ```bash
 git clone https://github.com/keerthanadungala/gatorHive.git
@@ -14,20 +14,20 @@ Then navigate into the project directory:
 cd Frontend
 ```
 
-### 2️⃣ Install Dependencies
+### 2 Install Dependencies
 Run the following command to install all required dependencies:
 ```bash
 npm install
 ```
 
-### 3️⃣ Start the Development Server
+### 3 Start the Development Server
 To start the frontend server, run:
 ```bash
 npm run dev
 ```
 After running the command, open your browser and visit:  **http://localhost:5173**
 
-### 4️⃣ Required Dependencies
+### 4 Required Dependencies
 Make sure you have installed these essential packages:
 ```bash
 npm install react-router-dom axios
