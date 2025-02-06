@@ -1,0 +1,27 @@
+.navbar {
+    background-color: var(--uf-blue);
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 0 0 10px 10px;
+  }
+  
+  .navbar h1 {
+    color: var(--uf-orange);
+    font-size: 24px;
+  }
+  
+  .nav-links a {
+    color: white;
+    margin-left: 20px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 18px;
+    transition: color 0.3s;
+  }
+  
+  .nav-links a:hover {
+    color: var(--uf-orange);
+  }
+  
