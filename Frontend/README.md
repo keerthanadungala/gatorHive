@@ -2,7 +2,7 @@
 
 Follow these steps to **set up and run** the **GatorHive frontend** project on your local machine.
 
-## 📌 How to Run the Frontend Project
+## 📌 How to Run the Frontend 
 
 ### 1️⃣ Clone the Repository
 If you haven't already cloned the repository, run:
