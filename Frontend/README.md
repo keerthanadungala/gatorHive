@@ -1,5 +1,4 @@
-#
-GatorHive - Frontend
+# GatorHive - Frontend
 ## Environment Setup
 ### Install and Set Up the React Project
 We use Vite to create a fast and efficient React
