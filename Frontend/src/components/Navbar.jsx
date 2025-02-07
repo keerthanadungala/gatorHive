@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import "./Navbar.css"; // Modern CSS for Navbar
 
 import "./Navbar.css"; // Modern CSS for Navbar
 
@@ -14,7 +15,10 @@ const Navbar = () => {
         <Link to="/create">Create Event</Link>
 
 
+
+
         <Link to="/events">View Events</Link>
+
 
       </div>
     </nav>
