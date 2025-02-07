@@ -11,7 +11,10 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create" element={<EventCreate />} />
+
+
         <Route path="/events" element={<EventList />} />
+
       </Routes>
     </Router>
   );
