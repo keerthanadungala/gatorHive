@@ -4,7 +4,9 @@ import Home from "./components/Home";
 import EventCreate from "./pages/EventCreate";
 
 
+
 import EventList from "./pages/EventList";
+
 
 
 function App() {
@@ -18,7 +20,10 @@ function App() {
 
 
 
+
+
         <Route path="/events" element={<EventList />} />
+
 
 
       </Routes>

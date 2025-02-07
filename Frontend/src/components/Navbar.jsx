@@ -1,9 +1,12 @@
 import { Link } from "react-router-dom";
 import "./Navbar.css"; // Modern CSS for Navbar
 
+
+
 import "./Navbar.css"; // Modern CSS for Navbar
 
 import "./Navbar.css"; // Modern UF-Themed Navbar Styles
+
 
 
 const Navbar = () => {
@@ -17,7 +20,10 @@ const Navbar = () => {
 
 
 
+
+
         <Link to="/events">View Events</Link>
+
 
 
       </div>
