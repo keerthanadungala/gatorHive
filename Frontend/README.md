@@ -1,34 +1,36 @@
 # GatorHive - Frontend
-## Environment Setup
-### Install and Set Up the React Project
-We use Vite to create a fast and efficient React
-project. Follow these steps:
-1. Create a new Vite project:
-```sh
-npm create vite@latest gatorhive-frontend --
-template react
+
+Follow these steps to **set up and run** the **GatorHive frontend** project on your local machine.
+
+##  How to Run the Frontend 
+
+### 1 Clone the Repository
+If you haven't already cloned the repository, run:
+```bash
+git clone https://github.com/keerthanadungala/gatorHive.git
+
 ```
-2. Navigate to the project directory:
-```sh
-cd gatorhive-frontend
+Then navigate into the project directory:
+```bash
+cd Frontend
 ```
-3. Install dependencies:
-```sh
+
+### 2 Install Dependencies
+Run the following command to install all required dependencies:
+```bash
 npm install
 ```
-4. Start the development server:
-```sh
+
+### 3 Start the Development Server
+To start the frontend server, run:
+```bash
 npm run dev
 ```
-5. Open your browser and visit [http://
-localhost:5173](http://localhost:5173)
-## Required Dependencies
-Install additional required packages:
-```sh
+After running the command, open your browser and visit:  **http://localhost:5173**
+
+### 4 Required Dependencies
+Make sure you have installed these essential packages:
+```bash
 npm install react-router-dom axios
 ```
-These packages provide:
-- `react-router-dom`: Page navigation (routing) in
-React
-- `axios`: API request handling for backend
-communication
+
