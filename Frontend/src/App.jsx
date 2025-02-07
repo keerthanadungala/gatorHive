@@ -3,6 +3,12 @@ import Navbar from "./components/Navbar";
 import Home from "./components/Home";
 import EventCreate from "./pages/EventCreate";
 
+
+
+import EventList from "./pages/EventList";
+
+
+
 function App() {
   return (
     <Router>
@@ -10,6 +16,16 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/create" element={<EventCreate />} />
+
+
+
+
+
+
+        <Route path="/events" element={<EventList />} />
+
+
+
       </Routes>
     </Router>
   );
