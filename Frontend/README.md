@@ -12,7 +12,7 @@ git clone https://github.com/keerthanadungala/gatorHive.git
 ```
 Then navigate into the project directory:
 ```bash
-cd Frontend
+cd gatorHive/Frontend
 ```
 
 ### 2 Install Dependencies
