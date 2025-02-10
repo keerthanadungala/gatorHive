@@ -19,6 +19,7 @@ const EventCreate = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setMessage("🎉 Event created successfully!");
+    alert("🎉 Event created successfully!");
     setEventData({ title: "", date: "", time: "", location: "", description: "" });
   };
 
