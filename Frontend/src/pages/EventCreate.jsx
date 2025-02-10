@@ -1,7 +1,7 @@
 import { useState } from "react";
-import "./EventCreate.css"; // Import the updated CSS file
+import "./EventCreate.css";
 
-const EventCreate = () => {
+const EventCreate = ({ setEvents, events }) => {
   const [eventData, setEventData] = useState({
     title: "",
     date: "",
@@ -18,12 +18,24 @@ const EventCreate = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Validation: Check if all fields are filled
     if (!eventData.title || !eventData.date || !eventData.time || !eventData.location || !eventData.description) {
       alert("⚠️ Please fill in all fields before submitting.");
       return;
     }
+
+    // Create new event object
+    const newEvent = { id: events.length + 1, ...eventData };
+
+    // Update state with the new event
+    setEvents([...events, newEvent]);
+
+    // Show success message
     setMessage("🎉 Event created successfully!");
     alert("🎉 Event created successfully!");
+
+    // Reset form fields
     setEventData({ title: "", date: "", time: "", location: "", description: "" });
   };
 
