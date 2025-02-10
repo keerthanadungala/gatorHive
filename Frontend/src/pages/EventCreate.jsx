@@ -18,6 +18,10 @@ const EventCreate = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!eventData.title || !eventData.date || !eventData.time || !eventData.location || !eventData.description) {
+      alert("⚠️ Please fill in all fields before submitting.");
+      return;
+    }
     setMessage("🎉 Event created successfully!");
     alert("🎉 Event created successfully!");
     setEventData({ title: "", date: "", time: "", location: "", description: "" });
