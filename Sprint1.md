@@ -19,6 +19,8 @@
 7. Add a background image to the home page for better UI appeal.
 8. Implement Create Event API.
 9. Implement List All Events API.
+10. Implement Update Event API.
+11. Implement Delete Event API.
 
 ## **Successfully Completed Issues**
 - Environment and code setup for backend and frontend.
@@ -29,6 +31,7 @@
 - Added a background image to the homepage.
 - Implemented Create Event API.
 - Implemented List All Events API.
+- Implemented Update Event API.
 
 ## **Issues Not Completed and Reasons**
 
@@ -40,5 +43,4 @@
 
 ## **Demo Links**
 - **Frontend Video Demo:** https://youtu.be/q85EZS1kpgU
-- **Backend Video Demo:** 
-
+- **Backend Video Demo:** https://youtu.be/frYDi5d8ACg
