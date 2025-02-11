@@ -1,4 +1,4 @@
-**# Sprint 1 Report**
+# **Sprint 1 Report**
 
 ## **User Stories**
 
