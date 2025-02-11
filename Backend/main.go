@@ -69,11 +69,46 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(event)
 }
 
+// Update an existing event
+func UpdateEvent(w http.ResponseWriter, r *http.Request) {
+	db, err := initializeDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Get the event ID from the URL parameters
+	vars := mux.Vars(r)
+	eventID := vars["id"]
+
+	// Find the event by ID
+	var event Event
+	if err := db.First(&event, eventID).Error; err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	// Decode the request body to get the updated event details
+	err = json.NewDecoder(r.Body).Decode(&event)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Save the updated event
+	db.Save(&event)
+
+	// Return the updated event as JSON
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(event)
+}
+
 func main() {
 	// Create router and routes
 	r := mux.NewRouter()
 	r.HandleFunc("/events", GetEvents).Methods("GET")
 	r.HandleFunc("/events", CreateEvent).Methods("POST")
+	r.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
 
 	// Start server
 	fmt.Println("Server started at :8080")
