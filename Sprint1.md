@@ -10,24 +10,35 @@
 
 ## **Planned Issues for Sprint 1**
 
-1. Implement the event creation form.
-2. Implement the event list display.
-3. Set up navigation between pages using React Router.
-4. Display a confirmation message upon event creation.
-5. Add a background image to the home page for better UI appeal.
+1. Frontend environment setup.
+2. Environment and code setup for backend.
+3. Implement the event creation form.
+4. Implement the event list display.
+5. Set up navigation between pages using React Router.
+6. Display a confirmation message upon event creation.
+7. Add a background image to the home page for better UI appeal.
+8. Implement Create Event API.
+9. Implement List All Events API.
 
 ## **Successfully Completed Issues**
-
+- Environment and code setup for backend and frontend.
 - Implemented the event creation form.
 - Implemented the event list display.
 - Set up navigation using React Router.
 - Displayed a confirmation message upon successful event creation.
 - Added a background image to the homepage.
+- Implemented Create Event API.
+- Implemented List All Events API.
 
 ## **Issues Not Completed and Reasons**
 
 - Persisting events after a page refresh – Currently, events are stored in React state but are lost on refresh. We planned to use localStorage, but this was deprioritized in favor of completing UI enhancements first.
+  
 - Event deletion feature – Not implemented due to time constraints, but will be included in the next sprint.
 
 **Upcoming Sprints:** We will focus on event persistence using a database and adding a delete event feature. Additionally, we will work on **integrating the frontend with the backend** to enable full functionality and data persistence. We will also continue to add more features to improve user experience and expand the application's capabilities.
+
+## **Demo Links**
+- **Frontend Video Demo:** https://youtu.be/q85EZS1kpgU
+- **Backend Video Demo:** 
 
