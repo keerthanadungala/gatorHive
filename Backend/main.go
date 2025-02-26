@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -110,7 +111,12 @@ func main() {
 	r.HandleFunc("/events", CreateEvent).Methods("POST")
 	r.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
 
-	// Start server
+	// Enable CORS for React frontend
+	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"})
+	origins := handlers.AllowedOrigins([]string{"http://localhost:3000"})
+
+	// Start server with CORS enabled
 	fmt.Println("Server started at :8080")
-	log.Fatal(http.ListenAndServe(":8080", r))
+	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(origins, methods, headers)(r)))
 }
