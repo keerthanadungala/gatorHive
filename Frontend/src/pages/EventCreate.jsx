@@ -1,5 +1,6 @@
 import { useState } from "react";
 import "./EventCreate.css";
+import axios from "axios";
 
 const EventCreate = ({ setEvents, events }) => {
   const [eventData, setEventData] = useState({
@@ -25,19 +26,29 @@ const EventCreate = ({ setEvents, events }) => {
       return;
     }
 
-    // Create new event object
-    const newEvent = { id: events.length + 1, ...eventData };
+    // Convert date and time to a single ISO format string
+    const formattedDate = new Date(`${eventData.date}T${eventData.time}:00`).toISOString();
 
-    // Update state with the new event
-    setEvents([...events, newEvent]);
+    // Create a new event object with formatted date
+    const newEvent = {
+      title: eventData.title,
+      description: eventData.description,
+      date: formattedDate, // Ensure proper timestamp format
+      location: eventData.location,
+    };
 
-    // Show success message
-    setMessage("🎉 Event created successfully!");
-    alert("🎉 Event created successfully!");
+    axios.post("http://localhost:8080/events", newEvent)
+    .then(response => {
+      console.log("Event created:", response.data);
+      setMessage("🎉 Event created successfully!");
+      setEventData({ title: "", date: "", time: "", location: "", description: "" });
+    })
+    .catch(error => {
+      console.error("Error creating event:", error);
+      setMessage("❌ Failed to create event!");
+    });
+};
 
-    // Reset form fields
-    setEventData({ title: "", date: "", time: "", location: "", description: "" });
-  };
 
   return (
     <div className="event-create-container">

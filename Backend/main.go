@@ -113,8 +113,8 @@ func main() {
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"})
-	origins := handlers.AllowedOrigins([]string{"http://localhost:3000"})
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "OPTIONS"})
+	origins := handlers.AllowedOrigins([]string{"http://localhost:5173"})
 
 	// Start server with CORS enabled
 	fmt.Println("Server started at :8080")
