@@ -92,3 +92,18 @@
 .delete-btn:hover {
   background: darkred;
 }
+.edit-btn {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: var(--uf-blue);
+  color: white;
+  text-decoration: none;
+  border-radius: 5px;
+  font-weight: bold;
+  transition: background 0.3s;
+}
+
+.edit-btn:hover {
+  background-color: var(--uf-orange);
+}

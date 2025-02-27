@@ -1,39 +1,17 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import axios from "axios";
-import "./EventList.css";
+import "./EventList.css"; // Import styles
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
 
-  // Fetch events from the backend
+  // Fetch events from backend
   useEffect(() => {
-    fetchEvents();
-  }, []);
-
-  const fetchEvents = () => {
     axios.get("http://localhost:8080/events")
-      .then(response => {
-        setEvents(response.data);
-      })
-      .catch(error => {
-        console.error("Error fetching events:", error);
-      });
-  };
-
-  // Delete event function
-  const handleDelete = (eventId) => {
-    if (!window.confirm("🗑 Are you sure you want to delete this event?")) {
-      return;
-    }
-
-    axios.delete(`http://localhost:8080/events/${eventId}`)
-      .then(() => {
-        setEvents(events.filter(event => event.ID !== eventId)); // Remove from state
-      })
-      .catch(error => {
-        console.error("Error deleting event:", error);
-      });
-  };
+      .then(response => setEvents(response.data))
+      .catch(error => console.error("Error fetching events:", error));
+  }, []);
 
   return (
     <div className="event-list-container">
@@ -43,14 +21,13 @@ const EventList = () => {
       ) : (
         <div className="event-grid">
           {events.map((event) => (
-            <div key={event.ID} className="event-card">
-              <h3 className="event-title">{event.Title}</h3>
-              <p className="event-date">📅 {new Date(event.Date).toDateString()}</p>
+            <div key={event.ID} className="event-card"> {/* FIX: Add unique key */}
+              <h3 className="event-title">{event.Title}</h3> {/* FIX: Ensure correct field names */}
+              <p className="event-date">📅 {event.Date.split("T")[0]} | ⏰ {event.Date.split("T")[1]?.slice(0,5)}</p>
               <p className="event-location">📍 {event.Location}</p>
               <p className="event-description">{event.Description}</p>
-              <button className="delete-btn" onClick={() => handleDelete(event.ID)}>
-                🗑 Delete
-              </button>
+              {/* Add Edit Button */}
+              <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
             </div>
           ))}
         </div>
@@ -60,5 +37,3 @@ const EventList = () => {
 };
 
 export default EventList;
-
-
