@@ -50,10 +50,11 @@ const EventList = () => {
               <p className="event-location">📍 {event.Location}</p>
               <p className="event-description">{event.Description}</p>
               {/* Add Edit Button */}
-              <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
-              <button className="delete-btn" onClick={() => handleDelete(event.ID)}>
-                🗑 Delete
-              </button>
+              <div className="button-container">
+          <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
+                <button onClick={() => handleDelete(event.ID)} className="delete-btn">🗑️ Delete</button>
+</div>
+
             </div>
           ))}
         </div>

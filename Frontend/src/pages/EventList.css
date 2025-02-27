@@ -76,34 +76,51 @@
   }
   
 
-  /* Delete Button */
+
+
+.button-container {
+  display: flex;
+  justify-content: center; /* Center buttons horizontally */
+  gap: 25px; 
+  margin-top: 15px; /* Add spacing from the text */
+}
+
+/* Delete Button */
 .delete-btn {
-  background: red;
+  flex: 1;
+  padding: 12px 20px; 
+  background-color: red;
   color: white;
   border: none;
-  padding: 10px 15px;
-  margin-top: 10px;
-  font-size: 14px;
+  border-radius: 8px;
+  font-weight: bold;
   cursor: pointer;
-  border-radius: 5px;
-  transition: background 0.3s;
+  transition: all 0.3s ease-in-out;
+  text-align: center;
+  font-size: 16px; 
 }
 
 .delete-btn:hover {
-  background: darkred;
+  background-color: darkred;
+  transform: translateY(-2px); 
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
 }
+
 .edit-btn {
-  display: inline-block;
-  margin-top: 10px;
-  padding: 8px 12px;
+  flex: 1;
+  padding: 12px 20px;
   background-color: var(--uf-blue);
   color: white;
   text-decoration: none;
-  border-radius: 5px;
+  border-radius: 8px;
   font-weight: bold;
-  transition: background 0.3s;
+  transition: all 0.3s ease-in-out;
+  text-align: center;
+  font-size: 16px; 
 }
 
 .edit-btn:hover {
   background-color: var(--uf-orange);
+  transform: translateY(-2px); 
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
 }
