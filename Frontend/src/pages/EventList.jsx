@@ -8,10 +8,33 @@ const EventList = () => {
 
   // Fetch events from backend
   useEffect(() => {
-    axios.get("http://localhost:8080/events")
-      .then(response => setEvents(response.data))
-      .catch(error => console.error("Error fetching events:", error));
+    fetchEvents();
   }, []);
+
+  const fetchEvents = () => {
+    axios.get("http://localhost:8080/events")
+      .then(response => {
+        setEvents(response.data);
+      })
+      .catch(error => {
+        console.error("Error fetching events:", error);
+      });
+  };
+
+  // Delete event function
+  const handleDelete = (eventId) => {
+    if (!window.confirm("🗑 Are you sure you want to delete this event?")) {
+      return;
+    }
+
+    axios.delete(`http://localhost:8080/events/${eventId}`)
+      .then(() => {
+        setEvents(events.filter(event => event.ID !== eventId)); // Remove from state
+      })
+      .catch(error => {
+        console.error("Error deleting event:", error);
+      });
+  };
 
   return (
     <div className="event-list-container">
@@ -27,7 +50,11 @@ const EventList = () => {
               <p className="event-location">📍 {event.Location}</p>
               <p className="event-description">{event.Description}</p>
               {/* Add Edit Button */}
-              <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
+              <div className="button-container">
+          <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
+                <button onClick={() => handleDelete(event.ID)} className="delete-btn">🗑️ Delete</button>
+</div>
+
             </div>
           ))}
         </div>
@@ -37,3 +64,5 @@ const EventList = () => {
 };
 
 export default EventList;
+
+
