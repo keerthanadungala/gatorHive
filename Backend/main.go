@@ -104,12 +104,49 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(event)
 }
 
+// Delete an event by ID
+func DeleteEvent(w http.ResponseWriter, r *http.Request) {
+	db, err := initializeDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	// Get the event ID from the URL parameters
+	vars := mux.Vars(r)
+	eventID, exists := vars["id"]
+	if !exists || eventID == "" {
+		http.Error(w, "Event ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Find the event by ID
+	var event Event
+	if err := db.First(&event, eventID).Error; err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete the event
+	if err := db.Delete(&event).Error; err != nil {
+		http.Error(w, "Failed to delete event", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response with a 200 OK status code
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Event deleted successfully"})
+}
+
 func main() {
 	// Create router and routes
 	r := mux.NewRouter()
 	r.HandleFunc("/events", GetEvents).Methods("GET")
 	r.HandleFunc("/events", CreateEvent).Methods("POST")
 	r.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
+	r.HandleFunc("/events/{id}", DeleteEvent).Methods("DELETE")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
