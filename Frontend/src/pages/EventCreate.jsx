@@ -1,3 +1,4 @@
+ 
 import { useState } from "react";
 import "./EventCreate.css";
 import axios from "axios";
@@ -17,74 +18,88 @@ const EventCreate = ({ setEvents, events }) => {
     setEventData({ ...eventData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     // Validation: Check if all fields are filled
     if (!eventData.title || !eventData.date || !eventData.time || !eventData.location || !eventData.description) {
-      alert("⚠️ Please fill in all fields before submitting.");
+      setMessage("⚠️ Please fill in all fields before submitting.");
       return;
     }
 
-    // Convert date and time to a single ISO format string
-    const formattedDate = new Date(`${eventData.date}T${eventData.time}:00`).toISOString();
+    try {
+      // Convert date and time to ISO format
+      const formattedDate = new Date(`${eventData.date}T${eventData.time}:00`).toISOString();
 
-    // Create a new event object with formatted date
-    const newEvent = {
-      title: eventData.title,
-      description: eventData.description,
-      date: formattedDate, // Ensure proper timestamp format
-      location: eventData.location,
-    };
+      // Create new event object
+      const newEvent = {
+        title: eventData.title,
+        description: eventData.description,
+        date: formattedDate,
+        location: eventData.location,
+      };
 
-    axios.post("http://localhost:8080/events", newEvent)
-    .then(response => {
+      // Send data to the server
+      const response = await axios.post("http://localhost:8080/events", newEvent);
+
       console.log("Event created:", response.data);
       setMessage("🎉 Event created successfully!");
+      
+      // Clear form fields
       setEventData({ title: "", date: "", time: "", location: "", description: "" });
-    })
-    .catch(error => {
-      console.error("Error creating event:", error);
-      setMessage("❌ Failed to create event!");
-    });
-};
 
+      // Optionally update event list (if needed)
+      if (setEvents) {
+        setEvents([...events, response.data]);
+      }
+      
+    } catch (error) {
+      console.error("Error creating event:", error);
+      setMessage("❌ Failed to create event. Please try again.");
+    }
+  };
 
   return (
     <div className="event-create-container">
       <h2>Create a New Gator Event 🐊</h2>
-      {message && <p className="message">{message}</p>}
+
+      {message && (
+        <p className="message" aria-live="polite">{message}</p>
+      )}
+
       <form onSubmit={handleSubmit} className="event-form">
         <div className="form-group">
-          <label> Title:</label>
-          <input type="text" name="title" value={eventData.title} onChange={handleChange} required />
+          <label htmlFor="title">Title:</label>
+          <input id="title" type="text" name="title" value={eventData.title} onChange={handleChange} required />
         </div>
 
         <div className="form-row">
           <div className="form-group">
-            <label> Date:</label>
-            <input type="date" name="date" value={eventData.date} onChange={handleChange} required />
+            <label htmlFor="date">Date:</label>
+            <input id="date" type="date" name="date" value={eventData.date} onChange={handleChange} required />
           </div>
           <div className="form-group">
-            <label> Time:</label>
-            <input type="time" name="time" value={eventData.time} onChange={handleChange} required />
+            <label htmlFor="time">Time:</label>
+            <input id="time" type="time" name="time" value={eventData.time} onChange={handleChange} required />
           </div>
         </div>
 
         <div className="form-group">
-          <label> Location:</label>
-          <input type="text" name="location" value={eventData.location} onChange={handleChange} required />
+          <label htmlFor="location">Location:</label>
+          <input id="location" type="text" name="location" value={eventData.location} onChange={handleChange} required />
         </div>
 
         <div className="form-group">
-          <label> Description:</label>
-          <textarea name="description" value={eventData.description} onChange={handleChange} required></textarea>
+          <label htmlFor="description">Description:</label>
+          <textarea id="description" name="description" value={eventData.description} onChange={handleChange} required></textarea>
         </div>
 
-        <button type="submit" className="submit-btn"> Create Event</button>
+        <button type="submit" className="submit-btn">Create Event</button>
       </form>
     </div>
   );
 };
 
 export default EventCreate;
+
+
