@@ -28,7 +28,7 @@ To validate UI interactions, we implemented **Cypress tests** covering:
 - **navigation.cy.js** – Confirms correct navigation between pages.
 
 **How to Run Cypress Tests**
-1. Navigate to the project root directory.
+1. Navigate to the project Frontend directory.
 2. Install Cypress:
    ```bash
    npm install cypress --save-dev
@@ -50,7 +50,7 @@ To validate individual components, we wrote **Vitest unit tests** for:
 - **App.test.js** – Ensures the main app component initializes correctly and routes work as expected.
 
 **How to Run Vitest Unit Tests**
-1. Navigate to the project root directory.
+1. Navigate to the project Frontend directory.
 2. Install Vitest:
    ```bash
    npm install vitest --save-dev
