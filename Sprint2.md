@@ -65,6 +65,49 @@ To validate individual components, we wrote **Vitest unit tests** for:
 
 ## Backend Sprint 2 
 
+In this sprint, the following tasks were completed:
+
+1. Implemented Delete Event API
+   - Added the DELETE /events/{id} endpoint to allow users to delete events by ID.
+   - Integrated proper error handling for cases where the event does not exist.
+   - Returned appropriate response codes and messages upon successful deletion.
+
+2. Added Unit Tests for Backend
+   - Created unit tests for all major backend APIs using the httptest package.
+   - Used a mock SQLite database (:memory:) for testing to ensure test isolation and avoid modifying production data.
+   - Implemented test cases for:
+      GET /events - Fetch all events.
+      POST /events - Create a new event.
+      PUT /events/{id} - Update an existing event.
+      DELETE /events/{id} - Delete an event by ID.
+   - Ensured each test validates HTTP response codes, response body, and expected database changes.
+
+## Unit Tests for Backend
+Below are the unit tests added for Sprint 2:
+1. TestGetEvents
+Description: Tests if the GET /events endpoint retrieves a list of events.
+Assertions:
+HTTP status code 200 OK
+Response body contains expected event details
+
+2. TestCreateEvent
+Description: Tests if the POST /events endpoint successfully creates a new event.
+Assertions:
+HTTP status code 200 OK
+Response body contains the newly created event details
+
+3. TestUpdateEvent
+Description: Tests if the PUT /events/{id} endpoint updates an existing event.
+Assertions:
+HTTP status code 200 OK
+Response body contains updated event details
+
+4. TestDeleteEvent
+Description: Tests if the DELETE /events/{id} endpoint successfully deletes an event.
+Assertions:
+HTTP status code 200 OK
+Response body contains confirmation message
+
 
 
 
