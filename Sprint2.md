@@ -41,7 +41,7 @@ To validate UI interactions, we implemented **Cypress tests** covering:
 
  Running the Cypress test suite ensures the application functions correctly across multiple workflows.
 
-### 3️⃣ Unit Testing with Vitest
+### 4) Unit Testing with Vitest
 To validate individual components, we wrote **Vitest unit tests** for:
 - **EventList.test.js** – Checks if the event list renders correctly.
 - **EventCreate.test.js** – Ensures event creation form functions properly.
