@@ -34,13 +34,7 @@ func initializeDB() (*gorm.DB, error) {
 }
 
 // Get all events
-func GetEvents(w http.ResponseWriter, r *http.Request) {
-	db, err := initializeDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
+func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var events []Event
 	db.Find(&events)
 
@@ -49,21 +43,15 @@ func GetEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create a new event
-func CreateEvent(w http.ResponseWriter, r *http.Request) {
-	db, err := initializeDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
+func CreateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var event Event
-	err = json.NewDecoder(r.Body).Decode(&event)
+	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	event.Date = time.Now() // default to the current time for simplicity
+	event.Date = time.Now() // default to the current time
 	db.Create(&event)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -71,93 +59,68 @@ func CreateEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // Update an existing event
-func UpdateEvent(w http.ResponseWriter, r *http.Request) {
-	db, err := initializeDB()
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	// Get the event ID from the URL parameters
+func UpdateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	vars := mux.Vars(r)
 	eventID := vars["id"]
 
-	// Find the event by ID
 	var event Event
 	if err := db.First(&event, eventID).Error; err != nil {
 		http.Error(w, "Event not found", http.StatusNotFound)
 		return
 	}
 
-	// Decode the request body to get the updated event details
-	err = json.NewDecoder(r.Body).Decode(&event)
+	err := json.NewDecoder(r.Body).Decode(&event)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Save the updated event
 	db.Save(&event)
 
-	// Return the updated event as JSON
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(event)
 }
 
-// Delete an event by ID
-func DeleteEvent(w http.ResponseWriter, r *http.Request) {
-	db, err := initializeDB()
-	if err != nil {
-		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
-
-	// Get the event ID from the URL parameters
+// Delete an event
+func DeleteEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	vars := mux.Vars(r)
-	eventID, exists := vars["id"]
-	if !exists || eventID == "" {
-		http.Error(w, "Event ID is required", http.StatusBadRequest)
-		return
-	}
+	eventID := vars["id"]
 
-	// Find the event by ID
 	var event Event
 	if err := db.First(&event, eventID).Error; err != nil {
 		http.Error(w, "Event not found", http.StatusNotFound)
 		return
 	}
 
-	// Delete the event
-	if err := db.Delete(&event).Error; err != nil {
-		http.Error(w, "Failed to delete event", http.StatusInternalServerError)
-		return
-	}
+	db.Delete(&event)
 
-	// Return success response with a 200 OK status code
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"message": "Event deleted successfully"})
 }
 
 func main() {
+	db, err := initializeDB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	// Create router and routes
 	r := mux.NewRouter()
-	r.HandleFunc("/events", GetEvents).Methods("GET")
-	r.HandleFunc("/events", CreateEvent).Methods("POST")
-	r.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
-	r.HandleFunc("/events/{id}", DeleteEvent).Methods("DELETE")
+	r.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) { GetEvents(w, r, db) }).Methods("GET")
+	r.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) { CreateEvent(w, r, db) }).Methods("POST")
+	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { UpdateEvent(w, r, db) }).Methods("PUT")
+	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteEvent(w, r, db) }).Methods("DELETE")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
 
-	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT","DELETE","OPTIONS"})
-
-
+	methods := handlers.AllowedMethods([]string{"GET", "POST", "PUT", "DELETE", "OPTIONS"})
 
 	origins := handlers.AllowedOrigins([]string{"http://localhost:5173"})
 
-	// Start server with CORS enabled
 	fmt.Println("Server started at :8080")
 	log.Fatal(http.ListenAndServe(":8080", handlers.CORS(origins, methods, headers)(r)))
+	log.Fatal(http.ListenAndServe(":8080", r))
 }
