@@ -11,7 +11,7 @@
 ## Feature Enhancements
 
 ### 1) Implemented Event Update & Delete Features
-In Sprint 2, users could create and view events. In Sprint 2, we implemented:
+In Sprint 2, users could create and view events. 
 - **Update Event:** Users can now edit an existing event and save changes.
 - **Delete Event:** Users can remove an event from both the frontend and the backend database.
 
