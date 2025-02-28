@@ -16,13 +16,13 @@ const EventUpdate = () => {
 
   const [message, setMessage] = useState("");
 
-  // Fetch existing event details
+
   useEffect(() => {
     axios
       .get(`http://localhost:8080/events/${id}`)
       .then((response) => {
         const event = response.data;
-        // Extract date and time from event.Date (ISO format)
+
         const eventDate = event.Date.split("T")[0]; // Extracts "YYYY-MM-DD"
         const eventTime = event.Date.split("T")[1]?.slice(0, 5); // Extracts "HH:MM"
         setEventData({
@@ -45,10 +45,10 @@ const EventUpdate = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // ✅ Ensure consistent date format
+
     let formattedDate = new Date(`${eventData.date}T${eventData.time}:00`).toISOString();
 
-    // ✅ Ensure `.000Z` is correct (Remove any additional `.000.000Z`)
+
     formattedDate = formattedDate.replace(".000.000Z", ".000Z");
 
     const updatedEvent = {
