@@ -6,7 +6,7 @@ import "./EventList.css"; // Import styles
 const EventList = () => {
   const [events, setEvents] = useState([]);
 
-  // Fetch events from backend
+
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -21,7 +21,7 @@ const EventList = () => {
       });
   };
 
-  // Delete event function
+
   const handleDelete = (eventId) => {
     if (!window.confirm("🗑 Are you sure you want to delete this event?")) {
       return;
