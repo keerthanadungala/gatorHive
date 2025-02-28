@@ -4,36 +4,70 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gorilla/mux"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/stretchr/testify/assert"
 )
 
-// Testing the GET /events endpoint to ensure it returns the list of events with status 200 OK.
-func TestGetEvents(t *testing.T) {
-	// Create a mock HTTP request for GET /events
-	req, err := http.NewRequest("GET", "/events", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+// Global test database instance
+var testDB *gorm.DB
 
+// Setup test database before running tests
+func TestMain(m *testing.M) {
+	var err error
+	testDB, err = gorm.Open("sqlite3", ":memory:") // In-memory DB for testing
+	if err != nil {
+		log.Fatalf("failed to connect to test database: %v", err)
+	}
+	testDB.AutoMigrate(&Event{})
+
+	code := m.Run()
+
+	testDB.Close()
+	os.Exit(code)
+}
+
+func getEventsHandler(w http.ResponseWriter, r *http.Request) {
+	GetEvents(w, r, testDB)
+}
+
+func createEventHandler(w http.ResponseWriter, r *http.Request) {
+	CreateEvent(w, r, testDB)
+}
+
+func updateEventHandler(w http.ResponseWriter, r *http.Request) {
+	UpdateEvent(w, r, testDB)
+}
+
+func deleteEventHandler(w http.ResponseWriter, r *http.Request) {
+	DeleteEvent(w, r, testDB)
+}
+
+// Testing GET /events
+func TestGetEvents(t *testing.T) {
+	// Seed mock data
+	testDB.Create(&Event{Title: "Mock Event", Description: "Test", Location: "Test Location"})
+
+	req, _ := http.NewRequest("GET", "/events", nil)
 	rr := httptest.NewRecorder()
 
-	// Create a new router and register the routes
 	r := mux.NewRouter()
-	r.HandleFunc("/events", GetEvents).Methods("GET")
+	r.HandleFunc("/events", getEventsHandler).Methods("GET")
 
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
-
-	assert.Contains(t, rr.Body.String(), "[")
+	assert.Contains(t, rr.Body.String(), "Mock Event")
 }
 
-// Testing the POST /events endpoint to ensure a new event can be created.
+// Testing POST /events
 func TestCreateEvent(t *testing.T) {
 	event := Event{
 		Title:       "Test Event",
@@ -41,53 +75,14 @@ func TestCreateEvent(t *testing.T) {
 		Location:    "Campus Hall",
 	}
 
-	eventJSON, err := json.Marshal(event)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer(eventJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
+	eventJSON, _ := json.Marshal(event)
+	req, _ := http.NewRequest("POST", "/events", bytes.NewBuffer(eventJSON))
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-
 	r := mux.NewRouter()
-	r.HandleFunc("/events", CreateEvent).Methods("POST")
+	r.HandleFunc("/events", createEventHandler).Methods("POST")
 
-	r.ServeHTTP(rr, req)
-
-	assert.Equal(t, http.StatusOK, rr.Code)
-
-	var createdEvent Event
-	if err := json.NewDecoder(rr.Body).Decode(&createdEvent); err != nil {
-		t.Fatal(err)
-	}
-	assert.Equal(t, "Test Event", createdEvent.Title)
-}
-
-// Testing the PUT /events/{id} endpoint to ensure an event can be updated.
-func TestUpdateEvent(t *testing.T) {
-	initialEvent := Event{
-		Title:       "Initial Event",
-		Description: "Initial Description",
-		Location:    "Old Location",
-	}
-	eventJSON, err := json.Marshal(initialEvent)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	req, err := http.NewRequest("POST", "/events", bytes.NewBuffer(eventJSON))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	r := mux.NewRouter()
-	r.HandleFunc("/events", CreateEvent).Methods("POST")
 	r.ServeHTTP(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code)
@@ -95,17 +90,28 @@ func TestUpdateEvent(t *testing.T) {
 	var createdEvent Event
 	json.Unmarshal(rr.Body.Bytes(), &createdEvent)
 
+	assert.Equal(t, "Test Event", createdEvent.Title)
+}
+
+// Testing PUT /events/{id}
+func TestUpdateEvent(t *testing.T) {
+	// Seed mock data
+	initialEvent := Event{Title: "Initial Event", Description: "Initial Description", Location: "Old Location"}
+	testDB.Create(&initialEvent)
+
 	updatedEvent := Event{
 		Title:       "Updated Event",
 		Description: "Updated Description",
 		Location:    "New Location",
 	}
-	updatedEventJSON, _ := json.Marshal(updatedEvent)
 
-	updateReq, _ := http.NewRequest("PUT", fmt.Sprintf("/events/%d", createdEvent.ID), bytes.NewBuffer(updatedEventJSON))
+	updatedEventJSON, _ := json.Marshal(updatedEvent)
+	updateReq, _ := http.NewRequest("PUT", fmt.Sprintf("/events/%d", initialEvent.ID), bytes.NewBuffer(updatedEventJSON))
 	updateReq.Header.Set("Content-Type", "application/json")
+
 	updateRR := httptest.NewRecorder()
-	r.HandleFunc("/events/{id}", UpdateEvent).Methods("PUT")
+	r := mux.NewRouter()
+	r.HandleFunc("/events/{id}", updateEventHandler).Methods("PUT")
 
 	r.ServeHTTP(updateRR, updateReq)
 
@@ -117,30 +123,17 @@ func TestUpdateEvent(t *testing.T) {
 	assert.Equal(t, "Updated Event", updatedResponse.Title)
 }
 
-// Testing the DELETE /events/{id} endpoint to ensure an event can be deleted.
+// Testing DELETE /events/{id}
 func TestDeleteEvent(t *testing.T) {
-	newEvent := Event{
-		Title:       "Event to Delete",
-		Description: "This event will be deleted",
-		Location:    "Nowhere",
-	}
-	eventJSON, _ := json.Marshal(newEvent)
+	// Seed mock data
+	eventToDelete := Event{Title: "Event to Delete", Description: "This event will be deleted", Location: "Nowhere"}
+	testDB.Create(&eventToDelete)
 
-	req, _ := http.NewRequest("POST", "/events", bytes.NewBuffer(eventJSON))
-	req.Header.Set("Content-Type", "application/json")
-	rr := httptest.NewRecorder()
-	r := mux.NewRouter()
-	r.HandleFunc("/events", CreateEvent).Methods("POST")
-
-	r.ServeHTTP(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code)
-
-	var createdEvent Event
-	json.Unmarshal(rr.Body.Bytes(), &createdEvent)
-
-	deleteReq, _ := http.NewRequest("DELETE", fmt.Sprintf("/events/%d", createdEvent.ID), nil)
+	deleteReq, _ := http.NewRequest("DELETE", fmt.Sprintf("/events/%d", eventToDelete.ID), nil)
 	deleteRR := httptest.NewRecorder()
-	r.HandleFunc("/events/{id}", DeleteEvent).Methods("DELETE")
+
+	r := mux.NewRouter()
+	r.HandleFunc("/events/{id}", deleteEventHandler).Methods("DELETE")
 
 	r.ServeHTTP(deleteRR, deleteReq)
 
