@@ -48,6 +48,7 @@ To validate individual components, we wrote **Vitest unit tests** for:
 - **EventUpdate.test.js** – Validates event update behavior.
 - **Navbar.test.js** – Confirms the navigation bar renders and links work correctly.
 - **App.test.js** – Ensures the main app component initializes correctly and routes work as expected.
+- **Home.test.js** – Verifies that the Home component displays properly.
 
 **How to Run Vitest Unit Tests**
 1. Navigate to the project Frontend directory.
