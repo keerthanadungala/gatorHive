@@ -6,6 +6,9 @@ import EventList from "./pages/EventList";
 import { useState } from "react";
 import EventUpdate from "./pages/EventUpdate"; 
 import Login from "./components/Login";
+import Signup from "./components/SignUp"; // or "./pages/Signup"
+
+
 
 function App() {
   const [events, setEvents] = useState([
@@ -19,6 +22,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
         <Route path="/create" element={<EventCreate setEvents={setEvents} events={events} />} />
         <Route path="/events" element={<EventList events={events} />} />
         <Route path="/events/update/:id" element={<EventUpdate />} />

@@ -1,7 +1,6 @@
 import "./Login.css";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import "./Login.css"; // Optional: create your own styles
+import { useNavigate, Link } from "react-router-dom";
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -20,7 +19,6 @@ const Login = () => {
 
     const { email, password } = formData;
 
-    // Simple validation
     if (!email || !password) {
       setMessage("⚠️ Please enter both email and password.");
       return;
@@ -30,7 +28,7 @@ const Login = () => {
     if (email === "user@gatorhive.com" && password === "password123") {
       setMessage("✅ Login successful!");
       setTimeout(() => {
-        navigate("/events"); // Redirect to events or dashboard
+        navigate("/events"); // Redirect to events
       }, 1000);
     } else {
       setMessage("❌ Invalid credentials. Try again.");
@@ -41,10 +39,11 @@ const Login = () => {
     <div className="login-container">
       <h2>🔐 GatorHive Login</h2>
       {message && <p className="message">{message}</p>}
+
       <form className="login-form" onSubmit={handleLogin}>
         <div className="form-group">
           <label htmlFor="email">Email:</label>
-          <input 
+          <input
             type="email"
             id="email"
             name="email"
@@ -57,7 +56,7 @@ const Login = () => {
 
         <div className="form-group">
           <label htmlFor="password">Password:</label>
-          <input 
+          <input
             type="password"
             id="password"
             name="password"
@@ -70,6 +69,11 @@ const Login = () => {
 
         <button type="submit" className="login-btn">Login</button>
       </form>
+
+      {/* Sign-up link for new users */}
+      <p style={{ marginTop: "15px" }}>
+        Don't have an account? <Link to="/signup">Sign up</Link>
+      </p>
     </div>
   );
 };
