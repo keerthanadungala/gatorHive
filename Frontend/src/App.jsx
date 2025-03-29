@@ -4,8 +4,8 @@ import Home from "./components/Home";
 import EventCreate from "./pages/EventCreate";
 import EventList from "./pages/EventList";
 import { useState } from "react";
-import EventUpdate from "./pages/EventUpdate"; // Import component
-
+import EventUpdate from "./pages/EventUpdate"; 
+import Login from "./components/Login";
 
 function App() {
   const [events, setEvents] = useState([
@@ -18,6 +18,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/create" element={<EventCreate setEvents={setEvents} events={events} />} />
         <Route path="/events" element={<EventList events={events} />} />
         <Route path="/events/update/:id" element={<EventUpdate />} />
