@@ -6,8 +6,10 @@ const Navbar = () => {
       <h1>🐊 GatorHive</h1>
       <div className="nav-links">
         <Link to="/">Home</Link>
-        <Link to="/create">Create Event</Link>
-        <Link to="/events">View Events</Link>
+        <Link to="/login">Login</Link>
+        <Link to="/create">CreateEvent</Link>
+        <Link to="/events">ViewEvents</Link>
+
       </div>
     </nav>
   );
