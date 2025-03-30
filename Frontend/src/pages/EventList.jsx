@@ -5,7 +5,7 @@ import "./EventList.css"; // Import styles
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
-
+  const [rsvps, setRsvps] = useState({}); // { eventId: true/false }
 
   useEffect(() => {
     fetchEvents();
@@ -21,7 +21,6 @@ const EventList = () => {
       });
   };
 
-
   const handleDelete = (eventId) => {
     if (!window.confirm("🗑 Are you sure you want to delete this event?")) {
       return;
@@ -29,11 +28,33 @@ const EventList = () => {
 
     axios.delete(`http://localhost:8080/events/${eventId}`)
       .then(() => {
-        setEvents(events.filter(event => event.ID !== eventId)); // Remove from state
+        setEvents(events.filter(event => event.ID !== eventId));
       })
       .catch(error => {
         console.error("Error deleting event:", error);
       });
+  };
+
+  const handleRSVP = (eventId) => {
+    const hasRSVPed = rsvps[eventId];
+    setRsvps((prev) => ({
+      ...prev,
+      [eventId]: !hasRSVPed,
+    }));
+  
+    setEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.ID === eventId
+          ? {
+              ...event,
+              RSVPCount: event.RSVPCount + (hasRSVPed ? -1 : 1),
+            }
+          : event
+      )
+    );
+
+    // (Optional) Integrate with backend:
+    // axios.post(`http://localhost:8080/events/${eventId}/rsvp`, { attending: !rsvps[eventId] });
   };
 
   return (
@@ -44,17 +65,19 @@ const EventList = () => {
       ) : (
         <div className="event-grid">
           {events.map((event) => (
-            <div key={event.ID} className="event-card"> {/* FIX: Add unique key */}
-              <h3 className="event-title">{event.Title}</h3> {/* FIX: Ensure correct field names */}
-              <p className="event-date">📅 {event.Date.split("T")[0]} | ⏰ {event.Date.split("T")[1]?.slice(0,5)}</p>
+            <div key={event.ID} className="event-card">
+              <h3 className="event-title">{event.Title}</h3>
+              <p className="event-date">📅 {event.Date.split("T")[0]} | ⏰ {event.Date.split("T")[1]?.slice(0, 5)}</p>
               <p className="event-location">📍 {event.Location}</p>
               <p className="event-description">{event.Description}</p>
-              {/* Add Edit Button */}
+              <p className="event-rsvp-count">👥 RSVPs: {event.RSVPCount || 0}</p>
               <div className="button-container">
-          <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
+                <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
                 <button onClick={() => handleDelete(event.ID)} className="delete-btn">🗑️ Delete</button>
-</div>
-
+                <button onClick={() => handleRSVP(event.ID)} className="edit-btn">
+                  {rsvps[event.ID] ? "✅ Cancel RSVP" : "📌 RSVP"}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -64,5 +87,3 @@ const EventList = () => {
 };
 
 export default EventList;
-
-

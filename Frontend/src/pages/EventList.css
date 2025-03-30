@@ -122,3 +122,16 @@
   transform: translateY(-2px); 
   box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
 }
+.edit-btn:last-child {
+  background-color: green;
+}
+
+.edit-btn:last-child:hover {
+  background-color: darkgreen;
+}
+.event-rsvp-count {
+  font-size: 16px;
+  color: #333;
+  font-weight: bold;
+  margin-top: 5px;
+}
