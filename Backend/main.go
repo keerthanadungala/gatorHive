@@ -27,8 +27,9 @@ type Event struct {
 // User model
 type User struct {
 	gorm.Model
-	Username string `gorm:"unique"`
-	Password string
+	Name     string `json:"name"`
+	Email    string `gorm:"unique" json:"email"`
+	Password string `json:"password"`
 }
 
 // TODO: JWT secret key (change for production)
@@ -115,30 +116,34 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 
 // SignUp handles new user registration.
 func SignUp(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
-	db, err := initializeDB()
-	if err != nil {
-		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
-		return
+	// We can decode a separate struct that includes confirmPassword
+	var reqData struct {
+		Name     string `json:"name"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
-	defer db.Close()
-
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&reqData); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// Hash the password.
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(reqData.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
 		return
 	}
-	user.Password = string(hashedPassword)
 
-	// Create the user.
+	// Create the user record
+	user := User{
+		Name:     reqData.Name,
+		Email:    reqData.Email,
+		Password: string(hashedPassword),
+	}
+
 	if err := db.Create(&user).Error; err != nil {
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		// e.g., unique constraint error if email already exists
+		http.Error(w, "Failed to create user: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -148,28 +153,34 @@ func SignUp(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 
 // Login handles user login and returns a JWT token.
 func Login(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
-	var reqUser User
-	if err := json.NewDecoder(r.Body).Decode(&reqUser); err != nil {
+	var reqData struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqData); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	var user User
-	if err := db.Where("username = ?", reqUser.Username).First(&user).Error; err != nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+	// Look up by email
+	if err := db.Where("email = ?", reqData.Email).First(&user).Error; err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(reqUser.Password)); err != nil {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+	// Compare the hashed password with the provided password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(reqData.Password)); err != nil {
+		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
 
+	// Create JWT token (example)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
 		"exp":     time.Now().Add(72 * time.Hour).Unix(),
 	})
-	tokenString, err := token.SignedString(jwtSecret)
+	tokenString, err := token.SignedString(jwtSecret) // Ensure jwtSecret is defined
 	if err != nil {
 		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
 		return
