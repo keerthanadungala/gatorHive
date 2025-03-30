@@ -7,10 +7,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Event model
@@ -22,6 +24,16 @@ type Event struct {
 	Location    string
 }
 
+// User model
+type User struct {
+	gorm.Model
+	Username string `gorm:"unique"`
+	Password string
+}
+
+// TODO: JWT secret key (change for production)
+var jwtSecret = []byte("your_secret_key")
+
 // Initialize the database
 func initializeDB() (*gorm.DB, error) {
 	db, err := gorm.Open("sqlite3", "./gatorhive.db")
@@ -29,7 +41,7 @@ func initializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Event{})
+	db.AutoMigrate(&Event{}, &User{})
 	return db, nil
 }
 
@@ -99,6 +111,74 @@ func DeleteEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Event deleted successfully"})
 }
 
+// Authentication Handlers
+
+// SignUp handles new user registration.
+func SignUp(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	db, err := initializeDB()
+	if err != nil {
+		http.Error(w, "Failed to connect to database", http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	var user User
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Hash the password.
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		return
+	}
+	user.Password = string(hashedPassword)
+
+	// Create the user.
+	if err := db.Create(&user).Error; err != nil {
+		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "User created successfully"})
+}
+
+// Login handles user login and returns a JWT token.
+func Login(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	var reqUser User
+	if err := json.NewDecoder(r.Body).Decode(&reqUser); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	var user User
+	if err := db.Where("username = ?", reqUser.Username).First(&user).Error; err != nil {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(reqUser.Password)); err != nil {
+		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		return
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"exp":     time.Now().Add(72 * time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -112,6 +192,10 @@ func main() {
 	r.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) { CreateEvent(w, r, db) }).Methods("POST")
 	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { UpdateEvent(w, r, db) }).Methods("PUT")
 	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteEvent(w, r, db) }).Methods("DELETE")
+
+	// Authentication routes.
+	r.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) { SignUp(w, r, db) }).Methods("POST")
+	r.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) { Login(w, r, db) }).Methods("POST")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
