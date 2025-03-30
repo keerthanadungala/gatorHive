@@ -7,6 +7,7 @@ import { useState } from "react";
 import EventUpdate from "./pages/EventUpdate"; 
 import Login from "./components/Login";
 import Signup from "./components/SignUp"; // or "./pages/Signup"
+import FullCalendarView from "./pages/FullCalendarView"; 
 
 
 
@@ -26,6 +27,7 @@ function App() {
         <Route path="/create" element={<EventCreate setEvents={setEvents} events={events} />} />
         <Route path="/events" element={<EventList events={events} />} />
         <Route path="/events/update/:id" element={<EventUpdate />} />
+        <Route path="/calendar" element={<FullCalendarView />} />  
       </Routes>
     </Router>
   );
