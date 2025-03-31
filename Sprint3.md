@@ -27,62 +27,38 @@ In this sprint, the following tasks were completed:
 
 Below are the unit tests added for Sprint 2:
 
-1. **TestGetEvents**  
-   *Description:* Tests if the `GET /events` endpoint retrieves a list of events with the correct RSVP count.  
-   *Assertions:*  
-   - HTTP status code 200 OK  
-   - Response body contains expected event details along with `rsvp_count`
-
-2. **TestCreateEvent**  
-   *Description:* Tests if the `POST /events` endpoint successfully creates a new event.  
-   *Assertions:*  
-   - HTTP status code 200 OK  
-   - Response body contains the newly created event details
-
-3. **TestUpdateEvent**  
-   *Description:* Tests if the `PUT /events/{id}` endpoint updates an existing event.  
-   *Assertions:*  
-   - HTTP status code 200 OK  
-   - Response body contains updated event details
-
-4. **TestDeleteEvent**  
-   *Description:* Tests if the `DELETE /events/{id}` endpoint successfully deletes an event.  
-   *Assertions:*  
-   - HTTP status code 200 OK  
-   - Response body contains a confirmation message
-
-5. **TestSignUp**  
+1. **TestSignUp**  
    *Description:* Tests if the `POST /signup` endpoint creates a new user.  
    *Assertions:*  
    - HTTP status code 200 OK  
    - Response body contains "User created successfully"
 
-6. **TestLogin**  
+2. **TestLogin**  
    *Description:* Tests if the `POST /login` endpoint authenticates a user and returns a valid JWT token.  
    *Assertions:*  
    - HTTP status code 200 OK  
    - Response body contains a non-empty token
 
-7. **TestLogout**  
+3. **TestLogout**  
    *Description:* Tests if the `POST /logout` endpoint successfully invalidates the JWT token.  
    *Assertions:*  
    - HTTP status code 200 OK  
    - Response body contains "Logout successful"  
    - The token is added to the in‑memory blacklist
 
-8. **TestRSVP_Success**  
+4. **TestRSVP_Success**  
    *Description:* Tests if a valid RSVP request (with matching email) creates an RSVP record and returns the updated RSVP count.  
    *Assertions:*  
    - HTTP status code 200 OK  
    - Response body contains "RSVP successful" and `rsvp_count` equal to 1
 
-9. **TestRSVP_AlreadyRSVPed**  
+5. **TestRSVP_AlreadyRSVPed**  
    *Description:* Tests if a duplicate RSVP request returns a message indicating the user has already RSVPed and the current RSVP count remains unchanged.  
    *Assertions:*  
    - HTTP status code 200 OK  
    - Response body contains "Already RSVPed" and correct `rsvp_count`
 
-10. **TestRSVP_EmailMismatch**  
+6. **TestRSVP_EmailMismatch**  
     *Description:* Tests if an RSVP request with an email that does not match the logged-in user's email is rejected.  
     *Assertions:*  
     - HTTP status code 401 Unauthorized  
