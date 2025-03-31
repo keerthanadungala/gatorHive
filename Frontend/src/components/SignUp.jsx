@@ -1,6 +1,7 @@
 import "./Signup.css";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -20,7 +21,7 @@ const Signup = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { name, email, password, confirmPassword } = formData;
 
@@ -34,11 +35,23 @@ const Signup = () => {
       return;
     }
 
-    // Dummy success logic
-    setMessage("✅ Account created successfully!");
-    setTimeout(() => {
-      navigate("/login");
-    }, 1500);
+    try {
+      const response = await axios.post("http://localhost:8080/signup", {
+        name,
+        email,
+        password
+      });
+
+      if (response.status === 200) {
+        setMessage("✅ Account created successfully!");
+        setTimeout(() => {
+          navigate("/login");
+        }, 1500);
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      setMessage("❌ Failed to create account. Email may already be registered.");
+    }
   };
 
   return (
@@ -108,6 +121,3 @@ const Signup = () => {
 };
 
 export default Signup;
-
-
-
