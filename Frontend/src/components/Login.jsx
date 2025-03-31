@@ -33,7 +33,7 @@ const Login = () => {
 
       if (response.status === 200) {
         localStorage.setItem("token", response.data.token || "dummy-token");
-        localStorage.setItem("email", email);
+        localStorage.setItem("user_email", email);
         setMessage("✅ Login successful!");
         setTimeout(() => navigate("/events"), 1000);
       }
