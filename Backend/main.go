@@ -56,71 +56,24 @@ func initializeDB() (*gorm.DB, error) {
 // Global in-memory token blacklist.
 var tokenBlacklist = make(map[string]bool)
 
-// GetEvents returns all events along with their RSVP counts and whether the current user has RSVPed.
+// GetEvents returns all events along with their RSVP counts.
 func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var events []Event
 	db.Find(&events)
 
-	// Define a response type embedding Event with RSVPCount and UserHasRSVP.
+	// Define a response type embedding Event with an RSVPCount.
 	type EventResponse struct {
 		Event
-		RSVPCount   int  `json:"rsvp_count"`
-		UserHasRSVP bool `json:"user_has_rsvp"`
+		RSVPCount int `json:"rsvp_count"`
 	}
 
-	// Get the user from the token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		http.Error(w, "Missing Authorization header", http.StatusBadRequest)
-		return
-	}
-	var tokenString string
-	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
-	if err != nil || tokenString == "" {
-		http.Error(w, "Invalid token format", http.StatusBadRequest)
-		return
-	}
-
-	// Validate the token
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		return jwtSecret, nil
-	})
-	if err != nil || !token.Valid {
-		http.Error(w, "Invalid token", http.StatusUnauthorized)
-		return
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
-		return
-	}
-
-	userIDFloat, ok := claims["user_id"].(float64)
-	if !ok {
-		http.Error(w, "user_id not found in token", http.StatusUnauthorized)
-		return
-	}
-	userID := uint(userIDFloat)
-
-	// For each event, check if the user has RSVPed
 	var responses []EventResponse
 	for _, event := range events {
 		var count int
 		db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
-
-		// Check if the user has RSVPed to this event
-		var rsvp RSVP_model
-		db.Where("user_id = ? AND event_id = ?", userID, event.ID).First(&rsvp)
-		userHasRSVP := rsvp.ID != 0 // If an RSVP exists, then the user has RSVPed
-
 		responses = append(responses, EventResponse{
-			Event:       event,
-			RSVPCount:   count,
-			UserHasRSVP: userHasRSVP,
+			Event:     event,
+			RSVPCount: count,
 		})
 	}
 

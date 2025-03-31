@@ -17,33 +17,41 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-
+  
     const { email, password } = formData;
-
+  
     if (!email || !password) {
       setMessage("⚠️ Please enter both email and password.");
       return;
     }
-
+  
     try {
       const response = await axios.post("http://localhost:8080/login", {
         email,
         password,
       });
-
-      if (response.status === 200) {
-
+  
+      console.log("Login response:", response.data); // ✅ Debug
+  
+      if (response.status === 200 && response.data.token) {
+        // ✅ Save token and email to localStorage
         localStorage.setItem("jwt_token", response.data.token);
         localStorage.setItem("user_email", email);
+  
         setMessage("✅ Login successful!");
-        setTimeout(() => navigate("/events"), 1000);
+  
+        // ✅ Redirect after slight delay (or immediately if preferred)
+        setTimeout(() => {
+          window.location.href = "/events"; // Forces hard redirect
+          // or: navigate("/events", { replace: true }); ← softer redirect
+        }, 1000);
       }
-      
     } catch (error) {
       console.error("Login error:", error);
       setMessage("❌ Invalid credentials. Try again.");
     }
   };
+  
 
   return (
     <div className="login-container">

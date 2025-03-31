@@ -1,10 +1,8 @@
 export const isAuthenticated = () => {
-    return !!localStorage.getItem("token");
-  };
-  
-  export const logout = () => {
-    localStorage.removeItem("token");
-  };
-  
-  
-  
+  return !!localStorage.getItem("jwt_token");
+};
+
+export const logout = () => {
+  localStorage.removeItem("jwt_token");
+  localStorage.removeItem("user_email");
+};
