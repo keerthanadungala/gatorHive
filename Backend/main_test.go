@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/dgrijalva/jwt-go"
 )
 
 // Global test database instance
@@ -30,12 +30,21 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to test database: %v", err)
 	}
 	// AutoMigrate both Event and User models.
-	testDB.AutoMigrate(&Event{}, &User{})
+	testDB.AutoMigrate(&Event{}, &User{}, &RSVP_model{})
 
 	code := m.Run()
 
 	testDB.Close()
 	os.Exit(code)
+}
+
+// Helper: generate a JWT token for a given user ID.
+func generateToken(userID uint) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": userID,
+		"exp":     time.Now().Add(72 * time.Hour).Unix(),
+	})
+	return token.SignedString(jwtSecret)
 }
 
 // Handler wrappers that pass testDB to handlers.
@@ -62,6 +71,10 @@ func signUpHandler(w http.ResponseWriter, r *http.Request) {
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	Login(w, r, testDB)
+}
+
+func rsvpHandler(w http.ResponseWriter, r *http.Request) {
+	RSVP(w, r, testDB)
 }
 
 // Testing GET /events
@@ -303,4 +316,189 @@ func TestLogout(t *testing.T) {
 	blacklisted, exists := tokenBlacklist[tokenString]
 	assert.True(t, exists, "Token should be in the blacklist")
 	assert.True(t, blacklisted, "Blacklisted value should be true")
+}
+
+// ---------------------
+// RSVP Unit Tests
+// ---------------------
+
+// TestRSVP_Success tests that a valid RSVP request creates an RSVP and returns the updated count.
+func TestRSVP_Success(t *testing.T) {
+	// Create a test event.
+	event := Event{
+		Title:       "RSVP Test Event",
+		Description: "Event for RSVP test",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Venue",
+	}
+	testDB.Create(&event)
+
+	// Create a test user.
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user := User{
+		Name:     "RSVP Tester",
+		Email:    "rsvp_tester@example.com",
+		Password: string(hashedPassword),
+	}
+	// Ensure any existing user with this email is removed.
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	// Generate a JWT token for this user.
+	tokenString, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Prepare the RSVP request body with the user's email.
+	reqData := map[string]string{
+		"email": user.Email,
+	}
+	reqJSON, _ := json.Marshal(reqData)
+
+	// Create a POST request to RSVP.
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/rsvp", event.ID), bytes.NewBuffer(reqJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/rsvp", rsvpHandler).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	// Expect HTTP 200 OK.
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Decode response.
+	var resp map[string]interface{}
+	err = json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "RSVP successful", resp["message"])
+	// The rsvp_count should be 1.
+	count, ok := resp["rsvp_count"].(float64)
+	assert.True(t, ok, "rsvp_count should be a number")
+	assert.Equal(t, float64(1), count)
+
+	// Cleanup test data.
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM rsvp_models WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+	})
+}
+
+// TestRSVP_AlreadyRSVPed tests that a duplicate RSVP request returns "Already RSVPed" and the correct count.
+func TestRSVP_AlreadyRSVPed(t *testing.T) {
+	// Create a test event.
+	event := Event{
+		Title:       "RSVP Duplicate Test Event",
+		Description: "Event for RSVP duplicate test",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Venue",
+	}
+	testDB.Create(&event)
+
+	// Create a test user.
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user := User{
+		Name:     "RSVP Duplicate Tester",
+		Email:    "duplicate_tester@example.com",
+		Password: string(hashedPassword),
+	}
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	// Generate a JWT token for the user.
+	tokenString, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Prepare the RSVP request body.
+	reqData := map[string]string{
+		"email": user.Email,
+	}
+	reqJSON, _ := json.Marshal(reqData)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/rsvp", rsvpHandler).Methods("POST")
+
+	// First RSVP request.
+	req1, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/rsvp", event.ID), bytes.NewBuffer(reqJSON))
+	req1.Header.Set("Content-Type", "application/json")
+	req1.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+	rr1 := httptest.NewRecorder()
+	router.ServeHTTP(rr1, req1)
+	assert.Equal(t, http.StatusOK, rr1.Code)
+
+	// Second RSVP request (duplicate).
+	req2, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/rsvp", event.ID), bytes.NewBuffer(reqJSON))
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+	rr2 := httptest.NewRecorder()
+	router.ServeHTTP(rr2, req2)
+	assert.Equal(t, http.StatusOK, rr2.Code)
+
+	var resp2 map[string]interface{}
+	err = json.Unmarshal(rr2.Body.Bytes(), &resp2)
+	assert.NoError(t, err)
+	assert.Equal(t, "Already RSVPed", resp2["message"])
+	count, ok := resp2["rsvp_count"].(float64)
+	assert.True(t, ok, "rsvp_count should be a number")
+	assert.Equal(t, float64(1), count)
+
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM rsvp_models WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+	})
+}
+
+// TestRSVP_EmailMismatch tests that if the email in the request body does not match the logged-in user's email, a 401 error is returned.
+func TestRSVP_EmailMismatch(t *testing.T) {
+	// Create a test event.
+	event := Event{
+		Title:       "RSVP Email Mismatch Event",
+		Description: "Event for RSVP email mismatch test",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Venue",
+	}
+	testDB.Create(&event)
+
+	// Create a test user.
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user := User{
+		Name:     "RSVP Mismatch Tester",
+		Email:    "mismatch_tester@example.com",
+		Password: string(hashedPassword),
+	}
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	// Generate a JWT token for the user.
+	tokenString, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Prepare a request body with an email that does not match.
+	reqData := map[string]string{
+		"email": "different@example.com",
+	}
+	reqJSON, _ := json.Marshal(reqData)
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/rsvp", event.ID), bytes.NewBuffer(reqJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+	rr := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/rsvp", rsvpHandler).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	// Expect a 401 Unauthorized response.
+	assert.Equal(t, http.StatusUnauthorized, rr.Code)
+
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM rsvp_models WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+	})
 }

@@ -32,6 +32,13 @@ type User struct {
 	Password string `json:"password"`
 }
 
+// RSVP model to record which user RSVPed to which event.
+type RSVP_model struct {
+	gorm.Model
+	UserID  uint `json:"user_id"`
+	EventID uint `json:"event_id"`
+}
+
 // TODO: JWT secret key (change for production)
 var jwtSecret = []byte("your_secret_key")
 
@@ -42,7 +49,7 @@ func initializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Event{}, &User{})
+	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{})
 	return db, nil
 }
 
@@ -232,6 +239,120 @@ func Logout(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
 }
 
+// RSVP allows a logged-in user to RSVP to an event,
+// but also requires that the email provided in the request body matches
+// the email of the logged-in user (as determined from the JWT token).
+func RSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// Get the event ID from the URL.
+	vars := mux.Vars(r)
+	eventID := vars["id"]
+
+	// Verify that the event exists.
+	var event Event
+	if err := db.First(&event, eventID).Error; err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	// Extract token from the Authorization header.
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusBadRequest)
+		return
+	}
+	var tokenString string
+	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+	if err != nil || tokenString == "" {
+		http.Error(w, "Invalid token format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the token.
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is HMAC.
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// Retrieve the user_id from the token claims.
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found in token", http.StatusUnauthorized)
+		return
+	}
+	userID := uint(userIDFloat)
+
+	// Look up the user in the database.
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Decode the request body to get the email provided by the client.
+	var reqData struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqData); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if reqData.Email == "" {
+		http.Error(w, "Email is required in the request body", http.StatusBadRequest)
+		return
+	}
+
+	// Compare the email in the request with the email from the user record.
+	if reqData.Email != user.Email {
+		http.Error(w, "Email in request does not match logged-in user's email", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if an RSVP already exists for this user and event.
+	var existing RSVP_model
+	if err := db.Where("user_id = ? AND event_id = ?", user.ID, event.ID).First(&existing).Error; err == nil {
+		var count int
+		db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"message":    "Already RSVPed",
+			"rsvp_count": count,
+		})
+		return
+	}
+
+	// Create a new RSVP record.
+	newRSVP := RSVP_model{
+		UserID:  user.ID,
+		EventID: event.ID,
+	}
+	if err := db.Create(&newRSVP).Error; err != nil {
+		http.Error(w, "Failed to create RSVP", http.StatusInternalServerError)
+		return
+	}
+
+	// Count total RSVPs for the event.
+	var count int
+	db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":    "RSVP successful",
+		"rsvp_count": count,
+	})
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -245,6 +366,9 @@ func main() {
 	r.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) { CreateEvent(w, r, db) }).Methods("POST")
 	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { UpdateEvent(w, r, db) }).Methods("PUT")
 	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteEvent(w, r, db) }).Methods("DELETE")
+
+	// RSVP route.
+	r.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) {RSVP(w, r, db)}).Methods("POST")
 
 	// Authentication routes.
 	r.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) { SignUp(w, r, db) }).Methods("POST")
