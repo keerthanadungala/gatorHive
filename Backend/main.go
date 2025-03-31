@@ -64,7 +64,10 @@ func CreateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		return
 	}
 
-	event.Date = time.Now() // default to the current time
+	if event.Date.IsZero() {
+		event.Date = time.Now()
+	}
+
 	db.Create(&event)
 
 	w.Header().Set("Content-Type", "application/json")
