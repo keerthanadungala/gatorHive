@@ -56,14 +56,31 @@ func initializeDB() (*gorm.DB, error) {
 // Global in-memory token blacklist.
 var tokenBlacklist = make(map[string]bool)
 
-// Get all events
+// GetEvents returns all events along with their RSVP counts.
 func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var events []Event
 	db.Find(&events)
 
+	// Define a response type embedding Event with an RSVPCount.
+	type EventResponse struct {
+		Event
+		RSVPCount int `json:"rsvp_count"`
+	}
+
+	var responses []EventResponse
+	for _, event := range events {
+		var count int
+		db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+		responses = append(responses, EventResponse{
+			Event:     event,
+			RSVPCount: count,
+		})
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(events)
+	json.NewEncoder(w).Encode(responses)
 }
+
 
 // Create a new event
 func CreateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
