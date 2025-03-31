@@ -5,10 +5,7 @@ import "./EventList.css";
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
-  const [rsvps, setRsvps] = useState({}); // { eventId: true/false }
 
-  const token = localStorage.getItem("token");
-  const email = localStorage.getItem("email");
 
   useEffect(() => {
     fetchEvents();
@@ -32,12 +29,7 @@ const EventList = () => {
   const handleDelete = (eventId) => {
     if (!window.confirm("🗑 Are you sure you want to delete this event?")) return;
 
-    axios
-      .delete(`http://localhost:8080/events/${eventId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+    axios.delete(`http://localhost:8080/events/${eventId}`)
       .then(() => {
         setEvents(events.filter((event) => event.ID !== eventId));
       })
