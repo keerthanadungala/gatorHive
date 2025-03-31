@@ -32,13 +32,11 @@ const Login = () => {
       });
 
       if (response.status === 200) {
+        localStorage.setItem("token", response.data.token || "dummy-token");
         setMessage("✅ Login successful!");
-        // Optional: store token or session data
-        // localStorage.setItem("token", response.data.token);
-        setTimeout(() => {
-          navigate("/events");
-        }, 1000);
+        setTimeout(() => navigate("/events"), 1000);
       }
+      
     } catch (error) {
       console.error("Login error:", error);
       setMessage("❌ Invalid credentials. Try again.");
