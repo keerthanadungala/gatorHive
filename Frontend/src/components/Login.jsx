@@ -1,6 +1,7 @@
 import "./Login.css";
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import axios from "axios";
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -14,7 +15,7 @@ const Login = () => {
     }));
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     const { email, password } = formData;
@@ -24,13 +25,22 @@ const Login = () => {
       return;
     }
 
-    // Dummy login logic
-    if (email === "user@gatorhive.com" && password === "password123") {
-      setMessage("✅ Login successful!");
-      setTimeout(() => {
-        navigate("/events"); // Redirect to events
-      }, 1000);
-    } else {
+    try {
+      const response = await axios.post("http://localhost:8080/login", {
+        email,
+        password,
+      });
+
+      if (response.status === 200) {
+        setMessage("✅ Login successful!");
+        // Optional: store token or session data
+        // localStorage.setItem("token", response.data.token);
+        setTimeout(() => {
+          navigate("/events");
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Login error:", error);
       setMessage("❌ Invalid credentials. Try again.");
     }
   };
@@ -70,7 +80,6 @@ const Login = () => {
         <button type="submit" className="login-btn">Login</button>
       </form>
 
-      {/* Sign-up link for new users */}
       <p style={{ marginTop: "15px" }}>
         Don't have an account? <Link to="/signup">Sign up</Link>
       </p>
@@ -79,6 +88,3 @@ const Login = () => {
 };
 
 export default Login;
-
-
-
