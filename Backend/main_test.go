@@ -16,6 +16,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/dgrijalva/jwt-go"
 )
 
 // Global test database instance
@@ -255,4 +256,51 @@ func TestLogin(t *testing.T) {
 	t.Cleanup(func() {
 		testDB.Exec("DELETE FROM users WHERE email = ?", email)
 	})
+}
+
+func TestLogout(t *testing.T) {
+	// Generate a valid token.
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": 1,
+		"exp":     time.Now().Add(72 * time.Hour).Unix(),
+	})
+	tokenString, err := token.SignedString(jwtSecret)
+	if err != nil {
+		t.Fatalf("failed to sign token: %v", err)
+	}
+
+	// Create an HTTP request for POST /logout with the token in the Authorization header.
+	req, err := http.NewRequest("POST", "/logout", nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+
+	rr := httptest.NewRecorder()
+
+	// Create a router and register the logout handler.
+	router := mux.NewRouter()
+	// Logout doesn't use the DB, so we pass nil.
+	router.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		Logout(w, r, nil)
+	}).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	// Assert that the response code is 200 OK.
+	assert.Equal(t, http.StatusOK, rr.Code, "Expected 200 OK, got %v", rr.Code)
+
+	// Decode the response body.
+	var resp map[string]string
+	err = json.NewDecoder(rr.Body).Decode(&resp)
+	if err != nil {
+		t.Fatalf("failed to decode response: %v; response body: %s", err, rr.Body.String())
+	}
+
+	// Assert that the response message is "Logout successful".
+	assert.Equal(t, "Logout successful", resp["message"])
+
+	// Verify that the token is now in the tokenBlacklist.
+	blacklisted, exists := tokenBlacklist[tokenString]
+	assert.True(t, exists, "Token should be in the blacklist")
+	assert.True(t, blacklisted, "Blacklisted value should be true")
 }
