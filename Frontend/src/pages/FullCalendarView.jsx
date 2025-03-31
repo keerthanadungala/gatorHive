@@ -10,8 +10,13 @@ const FullCalendarView = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
 
   useEffect(() => {
-    axios.get("http://localhost:8080/events")
-      .then((res) => {
+    const fetchEvents = async () => {
+      try {
+        const token = localStorage.getItem("jwt_token"); // Matching token key with Login.jsx
+        const res = await axios.get("http://localhost:8080/events", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
         const mapped = res.data.map((event) => ({
           id: event.ID,
           title: event.Title,
@@ -23,8 +28,12 @@ const FullCalendarView = () => {
           }
         }));
         setEvents(mapped);
-      })
-      .catch((err) => console.error("Error fetching events:", err));
+      } catch (err) {
+        console.error("Error fetching events:", err);
+      }
+    };
+
+    fetchEvents();
   }, []);
 
   const handleEventClick = ({ event }) => {
