@@ -56,31 +56,77 @@ func initializeDB() (*gorm.DB, error) {
 // Global in-memory token blacklist.
 var tokenBlacklist = make(map[string]bool)
 
-// GetEvents returns all events along with their RSVP counts.
+// GetEvents returns all events along with their RSVP counts and whether the current user has RSVPed.
 func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var events []Event
 	db.Find(&events)
 
-	// Define a response type embedding Event with an RSVPCount.
+	// Define a response type embedding Event with RSVPCount and UserHasRSVP.
 	type EventResponse struct {
 		Event
-		RSVPCount int `json:"rsvp_count"`
+		RSVPCount   int  `json:"rsvp_count"`
+		UserHasRSVP bool `json:"user_has_rsvp"`
 	}
 
+	// Get the user from the token
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusBadRequest)
+		return
+	}
+	var tokenString string
+	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+	if err != nil || tokenString == "" {
+		http.Error(w, "Invalid token format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the token
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found in token", http.StatusUnauthorized)
+		return
+	}
+	userID := uint(userIDFloat)
+
+	// For each event, check if the user has RSVPed
 	var responses []EventResponse
 	for _, event := range events {
 		var count int
 		db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+
+		// Check if the user has RSVPed to this event
+		var rsvp RSVP_model
+		db.Where("user_id = ? AND event_id = ?", userID, event.ID).First(&rsvp)
+		userHasRSVP := rsvp.ID != 0 // If an RSVP exists, then the user has RSVPed
+
 		responses = append(responses, EventResponse{
-			Event:     event,
-			RSVPCount: count,
+			Event:       event,
+			RSVPCount:   count,
+			UserHasRSVP: userHasRSVP,
 		})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(responses)
 }
-
 
 // Create a new event
 func CreateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
@@ -208,6 +254,7 @@ func Login(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	// Create JWT token (example)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID,
+		"email":   user.Email,
 		"exp":     time.Now().Add(72 * time.Hour).Unix(),
 	})
 	tokenString, err := token.SignedString(jwtSecret) // Ensure jwtSecret is defined
@@ -370,6 +417,89 @@ func RSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	})
 }
 
+// CancelRSVP allows a logged-in user to cancel their RSVP for an event.
+func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// Get the event ID from the URL.
+	vars := mux.Vars(r)
+	eventID := vars["id"]
+
+	// Verify that the event exists.
+	var event Event
+	if err := db.First(&event, eventID).Error; err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	// Extract token from the Authorization header.
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusBadRequest)
+		return
+	}
+	var tokenString string
+	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+	if err != nil || tokenString == "" {
+		http.Error(w, "Invalid token format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the token.
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is HMAC.
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		http.Error(w, "Invalid token claims", http.StatusUnauthorized)
+		return
+	}
+
+	// Retrieve the user_id from the token claims.
+	userIDFloat, ok := claims["user_id"].(float64)
+	if !ok {
+		http.Error(w, "user_id not found in token", http.StatusUnauthorized)
+		return
+	}
+	userID := uint(userIDFloat)
+
+	// Look up the user in the database.
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// Check if an RSVP already exists for this user and event.
+	var existing RSVP_model
+	if err := db.Where("user_id = ? AND event_id = ?", user.ID, event.ID).First(&existing).Error; err != nil {
+		http.Error(w, "RSVP not found", http.StatusNotFound)
+		return
+	}
+
+	// Delete the RSVP record.
+	if err := db.Delete(&existing).Error; err != nil {
+		http.Error(w, "Failed to cancel RSVP", http.StatusInternalServerError)
+		return
+	}
+
+	// Count total RSVPs for the event.
+	var count int
+	db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":    "RSVP canceled successfully",
+		"rsvp_count": count,
+	})
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -385,7 +515,9 @@ func main() {
 	r.HandleFunc("/events/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteEvent(w, r, db) }).Methods("DELETE")
 
 	// RSVP route.
-	r.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) {RSVP(w, r, db)}).Methods("POST")
+	r.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) { RSVP(w, r, db) }).Methods("POST")
+	// Cancel RSVP route.
+	r.HandleFunc("/events/{id}/cancel-rsvp", func(w http.ResponseWriter, r *http.Request) { CancelRSVP(w, r, db) }).Methods("POST")
 
 	// Authentication routes.
 	r.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) { SignUp(w, r, db) }).Methods("POST")
