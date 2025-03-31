@@ -20,7 +20,16 @@ In this sprint, the following tasks were completed:
      - If the user hasn’t RSVPed already, an RSVP record is created; otherwise, a message indicating that the user has already RSVPed is returned.
      - The RSVP count for the event is returned as part of the response.
 
-3. **Updated Event APIs to Include RSVP Count**
+3. **Implemented CancelRSVP Functionality**
+   - **Cancel RSVP API:**  
+     Added the POST /events/{id}/cancel-rsvp endpoint to allow users to cancel their RSVP for a specific event.
+     - The endpoint requires the client to provide the user's email in the request body.
+     - The email in the request body must match the email of the logged-in user (determined by the JWT token).
+     - If the user has RSVPed to the event, the RSVP record is deleted, and the total RSVP count is updated and returned.
+     - If no RSVP exists for the user, a message indicating that no RSVP was found is returned.
+     - The updated RSVP count for the event is included in the response.
+
+4. **Updated Event APIs to Include RSVP Count**
    - Modified the `GET /events` endpoint to include an `rsvp_count` field for each event, which reflects the total number of RSVPs for that event.
 
 ## Unit Tests for Backend
