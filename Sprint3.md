@@ -1,6 +1,63 @@
 # GatorHive - Sprint 3 Completion Report
 
-## Backend Sprint 2 
+## Frontend Sprint 3
+
+## Features Implemented
+
+### 1. Authentication System
+- **Login**: Users can securely log in with email and password. JWT token is stored in `localStorage` and used in protected API requests.
+- **Signup**: New users can register through the `/signup` route. Backend checks for email uniqueness and securely stores hashed passwords.
+- **Logout**: Clears the stored JWT token, ending the user session securely.
+
+### 2. Full Calendar View
+- Integrated the `@fullcalendar/react` package.
+- Displays events in a monthly grid format.
+- Clicking an event opens a modal showing full details: title, time, location, and description.
+- Events are fetched from the backend and correctly rendered.
+
+### 3. RSVP Functionality
+- Logged-in users can RSVP or cancel RSVP on events.
+- The RSVP count updates optimistically on the frontend and is synchronized with backend confirmation.
+- RSVP status (`userHasRSVP`) is remembered and correctly shown when users return or re-login.
+
+## Frontend Unit Tests
+
+We implemented and successfully ran unit tests for:
+
+- **Login** – Tests form validation, token storage, and error handling on incorrect credentials.
+- **Signup** – Checks form input and successful user registration flow.
+- **EventList** – Confirms correct event rendering, RSVP toggling, and RSVP count logic.
+- **CalendarView** – Tests that the calendar renders and shows events correctly.
+
+##  How to Run
+
+1. Navigate to the frontend project:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the React app:
+   ```bash
+   npm run dev
+   ```
+4. Open your browser and go to:
+   ```
+   http://localhost:5173
+   ```
+
+###  Run Tests
+
+To run all unit tests:
+```bash
+npm test
+```
+
+
+
+## Backend Sprint 3 
 
 In this sprint, the following tasks were completed:
 

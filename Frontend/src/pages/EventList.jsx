@@ -126,10 +126,10 @@ const EventList = () => {
               <p className="event-description">{event.Description}</p>
               <p className="event-rsvp-count">👥 RSVPs: {event.rsvpCount || 0}</p>
               <div className="button-container">
-                <Link to={`/events/update/${event.ID}`} className="edit-btn">✏️ Edit</Link>
-                <button onClick={() => handleDelete(event.ID)} className="delete-btn">🗑️ Delete</button>
+                <Link to={`/events/update/${event.ID}`} className="edit-btn"> Edit</Link>
+                <button onClick={() => handleDelete(event.ID)} className="delete-btn"> Delete</button>
                 <button onClick={() => handleRSVP(event.ID, event.userHasRSVP)} className="edit-btn">
-                  {event.userHasRSVP ? "✅ Cancel RSVP" : "📌 RSVP"}
+                  {event.userHasRSVP ? " Cancel RSVP" : "📌 RSVP"}
                 </button>
               </div>
             </div>
