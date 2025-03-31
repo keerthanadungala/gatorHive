@@ -46,6 +46,9 @@ func initializeDB() (*gorm.DB, error) {
 	return db, nil
 }
 
+// Global in-memory token blacklist.
+var tokenBlacklist = make(map[string]bool)
+
 // Get all events
 func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	var events []Event
@@ -193,6 +196,42 @@ func Login(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 }
 
+// Logout invalidates the current JWT token by first verifying it and then adding it to the blacklist.
+func Logout(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		http.Error(w, "Missing Authorization header", http.StatusBadRequest)
+		return
+	}
+
+	// Expect header in the format "Bearer <token>"
+	var tokenString string
+	_, err := fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+	if err != nil || tokenString == "" {
+		http.Error(w, "Invalid token format", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the token using the JWT secret.
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Make sure that the signing method is HMAC.
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	// If valid, add the token to the blacklist.
+	tokenBlacklist[tokenString] = true
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Logout successful"})
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -210,6 +249,10 @@ func main() {
 	// Authentication routes.
 	r.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) { SignUp(w, r, db) }).Methods("POST")
 	r.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) { Login(w, r, db) }).Methods("POST")
+	r.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		// No need to open DB here since logout only uses tokenBlacklist.
+		Logout(w, r, nil)
+	}).Methods("POST")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
