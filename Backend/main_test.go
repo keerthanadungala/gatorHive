@@ -502,3 +502,68 @@ func TestRSVP_EmailMismatch(t *testing.T) {
 		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
 	})
 }
+
+func TestCancelRSVP(t *testing.T) {
+	// Create a test event.
+	event := Event{
+		Title:       "Cancel RSVP Test Event",
+		Description: "Event for cancel RSVP test",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Venue",
+	}
+	testDB.Create(&event)
+
+	// Create a test user.
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	user := User{
+		Name:     "Cancel RSVP Tester",
+		Email:    "cancel_tester@example.com",
+		Password: string(hashedPassword),
+	}
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	// Generate a JWT token for this user.
+	tokenString, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Create an RSVP for the user.
+	rsvp := RSVP_model{
+		EventID: event.ID,
+		UserID:  user.ID,
+	}
+	testDB.Create(&rsvp)
+
+	// Create a DELETE request to cancel RSVP.
+	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/events/%d/rsvp", event.ID), nil)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) {
+		CancelRSVP(w, r, testDB)
+	}).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	// Expect HTTP 200 OK.
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	// Decode response.
+	var resp map[string]interface{}
+	err = json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "RSVP canceled successfully", resp["message"])
+
+	// Check if RSVP was removed from the database.
+	var remainingRSVP RSVP_model
+	result := testDB.Where("event_id = ? AND user_id = ?", event.ID, user.ID).First(&remainingRSVP)
+	assert.Error(t, result.Error, "RSVP should be deleted from database")
+
+	// Cleanup test data.
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM rsvp_models WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+	})
+}
