@@ -135,3 +135,23 @@
   font-weight: bold;
   margin-top: 5px;
 }
+
+.search-input {
+  padding: 12px;
+  width: 100%;
+  max-width: 400px;
+  font-size: 16px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  transition: box-shadow 0.3s ease-in-out;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--uf-blue);
+  box-shadow: 0 0 8px rgba(0, 33, 165, 0.2);
+}
+
+
+
