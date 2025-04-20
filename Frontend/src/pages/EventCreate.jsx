@@ -1,4 +1,4 @@
- 
+
 import { useState } from "react";
 import "./EventCreate.css";
 import axios from "axios";
@@ -10,6 +10,7 @@ const EventCreate = ({ setEvents, events }) => {
     time: "",
     location: "",
     description: "",
+    capacity: "", // ✅ Added capacity field
   });
 
   const [message, setMessage] = useState("");
@@ -22,37 +23,47 @@ const EventCreate = ({ setEvents, events }) => {
     e.preventDefault();
 
     // Validation: Check if all fields are filled
-    if (!eventData.title || !eventData.date || !eventData.time || !eventData.location || !eventData.description) {
+    if (
+      !eventData.title ||
+      !eventData.date ||
+      !eventData.time ||
+      !eventData.location ||
+      !eventData.description ||
+      !eventData.capacity
+    ) {
       setMessage("⚠️ Please fill in all fields before submitting.");
       return;
     }
 
     try {
-      // Convert date and time to ISO format
       const formattedDate = new Date(`${eventData.date}T${eventData.time}:00`).toISOString();
 
-      // Create new event object
       const newEvent = {
         title: eventData.title,
         description: eventData.description,
         date: formattedDate,
         location: eventData.location,
+        capacity: parseInt(eventData.capacity), // ✅ Add capacity to request
       };
 
-      // Send data to the server
       const response = await axios.post("http://localhost:8080/events", newEvent);
 
       console.log("Event created:", response.data);
       setMessage("🎉 Event created successfully!");
-      
-      // Clear form fields
-      setEventData({ title: "", date: "", time: "", location: "", description: "" });
 
-      // Optionally update event list (if needed)
+      setEventData({
+        title: "",
+        date: "",
+        time: "",
+        location: "",
+        description: "",
+        capacity: "",
+      });
+
       if (setEvents) {
         setEvents([...events, response.data]);
       }
-      
+
     } catch (error) {
       console.error("Error creating event:", error);
       setMessage("❌ Failed to create event. Please try again.");
@@ -63,9 +74,7 @@ const EventCreate = ({ setEvents, events }) => {
     <div className="event-create-container">
       <h2>Create a New Gator Event 🐊</h2>
 
-      {message && (
-        <p className="message" aria-live="polite">{message}</p>
-      )}
+      {message && <p className="message" aria-live="polite">{message}</p>}
 
       <form onSubmit={handleSubmit} className="event-form">
         <div className="form-group">
@@ -92,6 +101,12 @@ const EventCreate = ({ setEvents, events }) => {
         <div className="form-group">
           <label htmlFor="description">Description:</label>
           <textarea id="description" name="description" value={eventData.description} onChange={handleChange} required></textarea>
+        </div>
+
+        {/* ✅ Add Capacity Field */}
+        <div className="form-group">
+          <label htmlFor="capacity">Capacity:</label>
+          <input id="capacity" type="number" name="capacity" value={eventData.capacity} onChange={handleChange} required />
         </div>
 
         <button type="submit" className="submit-btn">Create Event</button>
