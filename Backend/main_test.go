@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to test database: %v", err)
 	}
 	// AutoMigrate both Event and User models.
-	testDB.AutoMigrate(&Event{}, &User{}, &RSVP_model{})
+	testDB.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{})
 
 	code := m.Run()
 
@@ -75,6 +75,18 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 
 func rsvpHandler(w http.ResponseWriter, r *http.Request) {
 	RSVP(w, r, testDB)
+}
+
+func createCommentHandler(w http.ResponseWriter, r *http.Request) {
+	CreateComment(w, r, testDB)
+}
+
+func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	GetComments(w, r, testDB)
+}
+
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	DeleteComment(w, r, testDB)
 }
 
 // Testing GET /events
@@ -566,4 +578,120 @@ func TestCancelRSVP(t *testing.T) {
 		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
 		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
 	})
+}
+
+// ---------------------
+// Comments Unit Tests
+// ---------------------
+
+func TestCreateComment(t *testing.T) {
+	// Seed an event and a user
+	ev := Event{
+		Title:       "E",
+		Description: "D",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "L",
+	}
+	testDB.Create(&ev)
+
+	usr := User{
+		Name:     "TestUser",
+		Email:    "test@example.com",
+		Password: "hashed",
+	}
+	testDB.Create(&usr)
+
+	// 1) Generate a JWT token for this user
+	tokenString, err := generateToken(usr.ID)
+	assert.NoError(t, err)
+
+	// 2) Build request with only "comment" in the body
+	body := map[string]string{
+		"comment": "Great event!",
+	}
+	payload, _ := json.Marshal(body)
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/comments", ev.ID), bytes.NewBuffer(payload))
+	req.Header.Set("Content-Type", "application/json")
+	// 3) Set the Authorization header
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenString))
+
+	// Perform the request
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/comments", createCommentHandler).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	// Assertions
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var c Comment
+	err = json.Unmarshal(rr.Body.Bytes(), &c)
+	assert.NoError(t, err)
+
+	assert.Equal(t, usr.ID, c.UserID, "should record the commenter’s user ID")
+	assert.Equal(t, ev.ID, c.EventID, "should record the event ID")
+	assert.Equal(t, "Great event!", c.Comment, "comment should match")
+	assert.Equal(t, usr.Name, c.User.Name, "should return the commenter’s username")
+}
+
+// TestGetComments tests the GET /events/{id}/comments endpoint.
+func TestGetComments(t *testing.T) {
+	// Seed an event, user, and two comments
+	ev := Event{Title: "E2", Description: "D2", Date: time.Now().Add(24 * time.Hour), Location: "L2"}
+	testDB.Create(&ev)
+	usr := User{Name: "User2", Email: "u2@example.com", Password: "h"}
+	testDB.Create(&usr)
+	c1 := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "First"}
+	c2 := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "Second"}
+	testDB.Create(&c1)
+	testDB.Create(&c2)
+
+	// Build request
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/events/%d/comments", ev.ID), nil)
+
+	// Perform
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/comments", getCommentsHandler).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var list []Comment
+	err := json.Unmarshal(rr.Body.Bytes(), &list)
+	assert.NoError(t, err)
+	assert.Len(t, list, 2)
+	assert.Equal(t, "First", list[0].Comment)
+	assert.Equal(t, "Second", list[1].Comment)
+}
+
+func TestDeleteComment(t *testing.T) {
+	// Seed an event, user, and a comment
+	ev := Event{Title: "E3", Description: "D3", Date: time.Now().Add(24 * time.Hour), Location: "L3"}
+	testDB.Create(&ev)
+	usr := User{Name: "User3", Email: "u3@example.com", Password: "h"}
+	testDB.Create(&usr)
+	c := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "To be deleted"}
+	testDB.Create(&c)
+
+	// Build delete request
+	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/comments/%d", c.ID), nil)
+
+	// Perform
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/comments/{id}", deleteCommentHandler).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp map[string]string
+	err := json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "Comment deleted", resp["message"])
+
+	// Ensure it's gone
+	var count int
+	testDB.Model(&Comment{}).Where("id = ?", c.ID).Count(&count)
+	assert.Equal(t, 0, count)
 }
