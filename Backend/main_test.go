@@ -85,6 +85,10 @@ func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
 	GetComments(w, r, testDB)
 }
 
+func deleteCommentHandler(w http.ResponseWriter, r *http.Request) {
+	DeleteComment(w, r, testDB)
+}
+
 // Testing GET /events
 func TestGetEvents(t *testing.T) {
 	// Seed test data.
@@ -659,4 +663,35 @@ func TestGetComments(t *testing.T) {
 	assert.Len(t, list, 2)
 	assert.Equal(t, "First", list[0].Comment)
 	assert.Equal(t, "Second", list[1].Comment)
+}
+
+func TestDeleteComment(t *testing.T) {
+	// Seed an event, user, and a comment
+	ev := Event{Title: "E3", Description: "D3", Date: time.Now().Add(24 * time.Hour), Location: "L3"}
+	testDB.Create(&ev)
+	usr := User{Name: "User3", Email: "u3@example.com", Password: "h"}
+	testDB.Create(&usr)
+	c := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "To be deleted"}
+	testDB.Create(&c)
+
+	// Build delete request
+	req, _ := http.NewRequest("DELETE", fmt.Sprintf("/comments/%d", c.ID), nil)
+
+	// Perform
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/comments/{id}", deleteCommentHandler).Methods("DELETE")
+	router.ServeHTTP(rr, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var resp map[string]string
+	err := json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "Comment deleted", resp["message"])
+
+	// Ensure it's gone
+	var count int
+	testDB.Model(&Comment{}).Where("id = ?", c.ID).Count(&count)
+	assert.Equal(t, 0, count)
 }
