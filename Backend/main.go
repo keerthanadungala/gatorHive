@@ -39,6 +39,15 @@ type RSVP_model struct {
 	EventID uint `json:"event_id"`
 }
 
+// Comment represents a user’s comment on an event.
+type Comment struct {
+	gorm.Model
+	Comment string `json:"comment"`
+	UserID  uint   `json:"user_id"`
+	User    User   `json:"user"`
+	EventID uint   `json:"event_id"`
+}
+
 // TODO: JWT secret key (change for production)
 var jwtSecret = []byte("your_secret_key")
 
@@ -49,7 +58,7 @@ func initializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{})
+	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{})
 	return db, nil
 }
 
@@ -453,6 +462,92 @@ func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	})
 }
 
+//COMMENTS FEATURE
+
+// CreateComment lets a user post a comment.
+func CreateComment(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	// 1. Extract event ID
+	eventID := mux.Vars(r)["id"]
+	var ev Event
+	if db.First(&ev, eventID).RecordNotFound() {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	// 2. Extract & validate the JWT token
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		http.Error(w, "Missing Authorization header", http.StatusUnauthorized)
+		return
+	}
+	var tokenString string
+	fmt.Sscanf(auth, "Bearer %s", &tokenString)
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	userIDf, ok := claims["user_id"].(float64)
+	if !ok {
+		http.Error(w, "user_id missing in token", http.StatusUnauthorized)
+		return
+	}
+	userID := uint(userIDf)
+
+	// 3. Look up the user to get their Name
+	var u User
+	if db.First(&u, userID).RecordNotFound() {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	// 4. Decode only the comment content from the body
+	var in struct {
+		Comment string `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// 5. Create the comment
+	c := Comment{
+		Comment: in.Comment,
+		UserID:  u.ID,
+		EventID: ev.ID,
+	}
+	if err := db.Create(&c).Error; err != nil {
+		http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+		return
+	}
+
+	// 6. Reload with User association so we return the username
+	db.Preload("User").First(&c, c.ID)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
+}
+
+// GetComments returns all comments for an event.
+func GetComments(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	eventID := mux.Vars(r)["id"]
+	var comments []Comment
+	db.
+		Preload("User").
+		Where("event_id = ?", eventID).
+		Order("created_at asc").
+		Find(&comments)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -479,6 +574,10 @@ func main() {
 		// No need to open DB here since logout only uses tokenBlacklist.
 		Logout(w, r, nil)
 	}).Methods("POST")
+
+	// Comment routes.
+	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { CreateComment(w, r, db) }).Methods("POST")
+	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { GetComments(w, r, db) }).Methods("GET")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
