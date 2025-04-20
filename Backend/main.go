@@ -548,6 +548,20 @@ func GetComments(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	json.NewEncoder(w).Encode(comments)
 }
 
+// DeleteComment removes a comment by its ID, without any auth checks.
+func DeleteComment(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	commentID := mux.Vars(r)["id"]
+
+	if err := db.Delete(&Comment{}, commentID).Error; err != nil {
+		http.Error(w, "Failed to delete comment", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Comment deleted"})
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -578,6 +592,7 @@ func main() {
 	// Comment routes.
 	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { CreateComment(w, r, db) }).Methods("POST")
 	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { GetComments(w, r, db) }).Methods("GET")
+	r.HandleFunc("/comments/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteComment(w, r, db) }).Methods("DELETE")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
