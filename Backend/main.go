@@ -39,6 +39,14 @@ type RSVP_model struct {
 	EventID uint `json:"event_id"`
 }
 
+// Comment represents a user’s comment on an event.
+type Comment struct {
+	gorm.Model
+	Content string `json:"content"`
+	UserID  uint   `json:"user_id"`
+	EventID uint   `json:"event_id"`
+}
+
 // TODO: JWT secret key (change for production)
 var jwtSecret = []byte("your_secret_key")
 
@@ -49,7 +57,7 @@ func initializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{})
+	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{})
 	return db, nil
 }
 
@@ -453,6 +461,90 @@ func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	})
 }
 
+//COMMENTS FEATURE
+
+// CreateComment lets a user post a comment.
+func CreateComment(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	eventID := mux.Vars(r)["id"]
+	// ensure event exists
+	var ev Event
+	if db.First(&ev, eventID).RecordNotFound() {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	var in struct {
+		UserID  uint   `json:"user_id"`
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	c := Comment{
+		UserID:  in.UserID,
+		EventID: ev.ID,
+		Content: in.Content,
+	}
+	if err := db.Create(&c).Error; err != nil {
+		http.Error(w, "Failed to save comment", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(c)
+}
+
+// GetComments returns all comments for an event.
+func GetComments(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	eventID := mux.Vars(r)["id"]
+	var comments []Comment
+	db.
+		Where("event_id = ?", eventID).
+		Order("created_at asc").
+		Find(&comments)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comments)
+}
+
+// DeleteComment deletes a comment by ID.
+func DeleteComment(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	commentID := mux.Vars(r)["id"]
+	var comment Comment
+	if db.First(&comment, commentID).RecordNotFound() {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	db.Delete(&comment)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"message": "Comment deleted successfully"})
+}
+
+// UpdateComment updates a comment by ID.
+func UpdateComment(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	commentID := mux.Vars(r)["id"]
+	var comment Comment
+	if db.First(&comment, commentID).RecordNotFound() {
+		http.Error(w, "Comment not found", http.StatusNotFound)
+		return
+	}
+
+	var updatedComment Comment
+	if err := json.NewDecoder(r.Body).Decode(&updatedComment); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	comment.Content = updatedComment.Content
+	db.Save(&comment)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(comment)
+}
+
 func main() {
 	db, err := initializeDB()
 	if err != nil {
@@ -479,6 +571,12 @@ func main() {
 		// No need to open DB here since logout only uses tokenBlacklist.
 		Logout(w, r, nil)
 	}).Methods("POST")
+
+	// Comment routes.
+	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { CreateComment(w, r, db) }).Methods("POST")
+	r.HandleFunc("/events/{id}/comments", func(w http.ResponseWriter, r *http.Request) { GetComments(w, r, db) }).Methods("GET")
+	r.HandleFunc("/comments/{id}", func(w http.ResponseWriter, r *http.Request) { DeleteComment(w, r, db) }).Methods("DELETE")
+	r.HandleFunc("/comments/{id}", func(w http.ResponseWriter, r *http.Request) { UpdateComment(w, r, db) }).Methods("PUT")
 
 	// Enable CORS for React frontend
 	headers := handlers.AllowedHeaders([]string{"Content-Type", "Authorization"})
