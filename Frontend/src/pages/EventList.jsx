@@ -6,7 +6,7 @@ import "./EventList.css";
 const EventList = () => {
   const [events, setEvents] = useState([]);
   const [rsvps, setRsvps] = useState({});
-  const [searchQuery, setSearchQuery] = useState(""); // 🔍 Add search state
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchEvents();
@@ -21,7 +21,9 @@ const EventList = () => {
       const eventsWithRSVPStatus = response.data.map(event => ({
         ...event,
         userHasRSVP: event.user_has_rsvp,
-        rsvpCount: event.rsvp_count
+        rsvpCount: event.rsvp_count,
+        capacity: typeof event.Capacity === "number" ? event.Capacity :
+                  typeof event.capacity === "number" ? event.capacity : undefined,
       }));
       setEvents(eventsWithRSVPStatus);
     })
@@ -90,7 +92,28 @@ const EventList = () => {
     }
   };
 
-  // 🔍 Filter events based on search query
+  const handleWaitlist = async (eventId) => {
+    const token = localStorage.getItem("jwt_token");
+    const email = localStorage.getItem("user_email");
+
+    if (!token || !email) {
+      alert("Please log in to join the waitlist.");
+      return;
+    }
+
+    try {
+      const response = await axios.post(
+        `http://localhost:8080/events/${eventId}/waitlist`,
+        { email },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      alert("✅ You've been added to the waitlist!");
+    } catch (err) {
+      console.error("Waitlist error:", err);
+      alert("❌ Failed to join waitlist.");
+    }
+  };
+
   const filteredEvents = events.filter((event) =>
     event.Title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     event.Location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -101,7 +124,6 @@ const EventList = () => {
     <div className="event-list-container">
       <h2 className="event-list-title">📋 Upcoming Gator Events</h2>
 
-      {/* 🔍 Search Bar */}
       <input
         type="text"
         placeholder="🔍 Search events..."
@@ -120,13 +142,21 @@ const EventList = () => {
               <p className="event-date">📅 {event.Date.split("T")[0]} | ⏰ {event.Date.split("T")[1]?.slice(0, 5)}</p>
               <p className="event-location">📍 {event.Location}</p>
               <p className="event-description">{event.Description}</p>
-              <p className="event-rsvp-count">👥 RSVPs: {event.rsvpCount || 0}</p>
+              <p className="event-rsvp-count">
+                👥 RSVPs: {event.rsvpCount ?? 0} / {event.capacity ?? "Not Set"}
+              </p>
+
               <div className="button-container">
                 <Link to={`/events/update/${event.ID}`} className="edit-btn">Edit</Link>
                 <button onClick={() => handleDelete(event.ID)} className="delete-btn">Delete</button>
-                <button onClick={() => handleRSVP(event.ID, event.userHasRSVP)} className="edit-btn">
-                  {event.userHasRSVP ? "Cancel RSVP" : "RSVP"}
-                </button>
+
+                {event.userHasRSVP ? (
+                  <button onClick={() => handleRSVP(event.ID, true)} className="edit-btn">Cancel RSVP</button>
+                ) : event.capacity !== undefined && event.rsvpCount >= event.capacity ? (
+                  <button onClick={() => handleWaitlist(event.ID)} className="edit-btn">Join Waitlist</button>
+                ) : (
+                  <button onClick={() => handleRSVP(event.ID, false)} className="edit-btn">RSVP</button>
+                )}
               </div>
             </div>
           ))}
@@ -137,5 +167,6 @@ const EventList = () => {
 };
 
 export default EventList;
+
 
 
