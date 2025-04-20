@@ -81,6 +81,10 @@ func createCommentHandler(w http.ResponseWriter, r *http.Request) {
 	CreateComment(w, r, testDB)
 }
 
+func getCommentsHandler(w http.ResponseWriter, r *http.Request) {
+	GetComments(w, r, testDB)
+}
+
 // Testing GET /events
 func TestGetEvents(t *testing.T) {
 	// Seed test data.
@@ -597,7 +601,7 @@ func TestCreateComment(t *testing.T) {
 	tokenString, err := generateToken(usr.ID)
 	assert.NoError(t, err)
 
-	// 2) Build request with only "content" in the body
+	// 2) Build request with only "comment" in the body
 	body := map[string]string{
 		"comment": "Great event!",
 	}
@@ -622,6 +626,37 @@ func TestCreateComment(t *testing.T) {
 
 	assert.Equal(t, usr.ID, c.UserID, "should record the commenter’s user ID")
 	assert.Equal(t, ev.ID, c.EventID, "should record the event ID")
-	assert.Equal(t, "Great event!", c.Comment, "content should match")
+	assert.Equal(t, "Great event!", c.Comment, "comment should match")
 	assert.Equal(t, usr.Name, c.User.Name, "should return the commenter’s username")
+}
+
+// TestGetComments tests the GET /events/{id}/comments endpoint.
+func TestGetComments(t *testing.T) {
+	// Seed an event, user, and two comments
+	ev := Event{Title: "E2", Description: "D2", Date: time.Now().Add(24 * time.Hour), Location: "L2"}
+	testDB.Create(&ev)
+	usr := User{Name: "User2", Email: "u2@example.com", Password: "h"}
+	testDB.Create(&usr)
+	c1 := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "First"}
+	c2 := Comment{UserID: usr.ID, EventID: ev.ID, Comment: "Second"}
+	testDB.Create(&c1)
+	testDB.Create(&c2)
+
+	// Build request
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/events/%d/comments", ev.ID), nil)
+
+	// Perform
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/comments", getCommentsHandler).Methods("GET")
+	router.ServeHTTP(rr, req)
+
+	// Assert
+	assert.Equal(t, http.StatusOK, rr.Code)
+	var list []Comment
+	err := json.Unmarshal(rr.Body.Bytes(), &list)
+	assert.NoError(t, err)
+	assert.Len(t, list, 2)
+	assert.Equal(t, "First", list[0].Comment)
+	assert.Equal(t, "Second", list[1].Comment)
 }
