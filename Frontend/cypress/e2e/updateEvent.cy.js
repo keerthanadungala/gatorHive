@@ -1,46 +1,32 @@
 describe("Update Event", () => {
   beforeEach(() => {
-      cy.visit("http://localhost:5173/events"); // Navigate to events page
+    cy.visit("http://localhost:5173/events"); // Navigate to event list
   });
 
-  it("should update an existing event", () => {
-      // Ensure event cards are loaded before interacting
-      cy.get(".event-card").should("have.length.greaterThan", 0);
+  it("should update an existing event with all fields", () => {
+    // Wait for event cards to load
+    cy.get(".event-card").should("have.length.greaterThan", 0);
 
-      // Click the edit button inside the first event card
-      cy.get(".event-card").first().within(() => {
-          cy.contains("Edit").click();
-      });
+    // Click the Edit button of the first event
+    cy.get(".event-card").first().within(() => {
+      cy.contains("Edit").click();
+    });
 
-      // Wait for the update form to be visible
-      cy.get('input[name="title"]').should("be.visible").clear().type("Updated Event Title");
+    // Fill in updated values
+    cy.get('input[name="title"]').clear().type("Updated Event Title");
+    cy.get('input[name="date"]').clear().type("2025-05-10");
+    cy.get('input[name="time"]').clear().type("12:30");
+    cy.get('input[name="location"]').clear().type("Updated Location Hall");
+    cy.get('input[name="capacity"]').clear().type("300");
+    cy.get('textarea[name="description"]').clear().type("This event has been fully updated using Cypress.");
 
-      // Handle date field (Explicitly clear and set a valid date)
-      cy.get('input[name="date"]')
-        .should("be.visible")
-        .clear()
-        .type("2025-05-10") // Use YYYY-MM-DD format (recognized by HTML date inputs)
-        .should("have.value", "2025-05-10"); // Ensure the date was set correctly
+    // Submit the form
+    cy.get(".submit-btn").click();
 
-      // Handle time field
-      cy.get('input[name="time"]')
-        .clear()
-        .type("12:30") // Ensure format is HH:mm
-        .should("have.value", "12:30");
+    // Verify redirection to event list
+    cy.url().should("include", "/events");
 
-      // Handle location field
-      cy.get('input[name="location"]').clear().type("New Location");
-
-      // Handle description field
-      cy.get('textarea[name="description"]').clear().type("Updated event details.");
-
-      // Submit the update form
-      cy.get(".submit-btn").click();
-
-      // Wait for redirection and the event list to be reloaded
-      cy.url().should("include", "/events");
-
-      // Ensure that the updated event title appears in the event list
-      cy.contains(".event-card", "Updated Event Title", { timeout: 5000 }).should("exist");
+    // Verify updated event appears in the list
+    cy.contains(".event-card", "Updated Event Title", { timeout: 5000 }).should("exist");
   });
 });

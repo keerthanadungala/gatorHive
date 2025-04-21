@@ -20,7 +20,10 @@ describe("EventCreate Component", () => {
     fireEvent.change(screen.getByLabelText(/Time:/i), { target: { value: "10:00" } });
     fireEvent.change(screen.getByLabelText(/Location:/i), { target: { value: "UF Hall" } });
     fireEvent.change(screen.getByLabelText(/Description:/i), { target: { value: "This is a test event." } });
-
+    fireEvent.change(screen.getByLabelText(/capacity/i), {
+      target: { value: "100" },
+    });
+    
 
     fireEvent.click(screen.getByText(/Create Event/i));
 
