@@ -29,6 +29,7 @@ const EventList = () => {
           rsvpCount: event.rsvp_count,
           capacity: event.capacity,
           userHasRSVP: event.user_has_rsvp || false,
+          userOnWaitlist: event.user_on_waitlist || false
         }));
         setEvents(eventsWithRSVPStatus);
       })
@@ -112,6 +113,13 @@ const EventList = () => {
         { email },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      // Update local state to reflect that user is now on waitlist
+      setEvents((prevEvents) =>
+        prevEvents.map((event) =>
+          event.ID === eventId ? { ...event, userOnWaitlist: true } : event
+        )
+      );
       alert("✅ You've been added to the waitlist!");
     } catch (err) {
       console.error("Waitlist error:", err);
@@ -166,10 +174,15 @@ const EventList = () => {
                 {event.userHasRSVP ? (
                   <button onClick={() => handleRSVP(event.ID, true)} className="edit-btn">Cancel RSVP</button>
                 ) : event.capacity !== undefined && event.rsvpCount >= event.capacity ? (
-                  <button onClick={() => handleWaitlist(event.ID)} className="edit-btn">Join Waitlist</button>
+                  event.userOnWaitlist ? (
+                    <button disabled className="edit-btn">On Waitlist</button>
+                  ) : (
+                    <button onClick={() => handleWaitlist(event.ID)} className="edit-btn">Join Waitlist</button>
+                  )
                 ) : (
                   <button onClick={() => handleRSVP(event.ID, false)} className="edit-btn">RSVP</button>
                 )}
+
               </div>
 
               {/* Toggle Comments Button */}

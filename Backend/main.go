@@ -40,6 +40,12 @@ type RSVP_model struct {
 	EventID uint `json:"event_id"`
 }
 
+type WaitlistEntry struct {
+	gorm.Model
+	UserID  uint `json:"user_id"`
+	EventID uint `json:"event_id"`
+}
+
 // Comment represents a user’s comment on an event.
 type Comment struct {
 	gorm.Model
@@ -59,7 +65,7 @@ func initializeDB() (*gorm.DB, error) {
 		return nil, err
 	}
 
-	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{})
+	db.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{}, &WaitlistEntry{})
 	return db, nil
 }
 
@@ -74,18 +80,55 @@ func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	// Define a response type embedding Event with an RSVPCount.
 	type EventResponse struct {
 		Event
-		RSVPCount int `json:"rsvp_count"`
-		Capacity  int `json:"capacity"`
+		RSVPCount      int  `json:"rsvp_count"`
+		Capacity       int  `json:"capacity"`
+		UserHasRSVP    bool `json:"user_has_rsvp"`
+		UserOnWaitlist bool `json:"user_on_waitlist"`
+	}
+
+	// Get userID from jwt
+	var userID uint
+	authHeader := r.Header.Get("Authorization")
+	if authHeader != "" {
+		var tokenString string
+		fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+		token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			return jwtSecret, nil
+		})
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			if uidFloat, ok := claims["user_id"].(float64); ok {
+				userID = uint(uidFloat)
+			}
+		}
 	}
 
 	var responses []EventResponse
 	for _, event := range events {
 		var count int
 		db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
+
+		hasRSVP := false
+		if userID != 0 {
+			var rsvp RSVP_model
+			if err := db.Where("event_id = ? AND user_id = ?", event.ID, userID).First(&rsvp).Error; err == nil {
+				hasRSVP = true
+			}
+		}
+
+		userOnWaitlist := false
+		if userID != 0 {
+			var waitlistEntry WaitlistEntry
+			if err := db.Where("event_id = ? AND user_id = ?", event.ID, userID).First(&waitlistEntry).Error; err == nil {
+				userOnWaitlist = true
+			}
+		}
+
 		responses = append(responses, EventResponse{
-			Event:     event,
-			RSVPCount: count,
-			Capacity:  event.Capacity,
+			Event:          event,
+			RSVPCount:      count,
+			Capacity:       event.Capacity,
+			UserHasRSVP:    hasRSVP,
+			UserOnWaitlist: userOnWaitlist,
 		})
 	}
 
@@ -378,7 +421,15 @@ func RSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		return
 	}
 
-	// Create a new RSVP record.
+	// Check if event is full
+	var rsvpCount int
+	db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&rsvpCount)
+	if rsvpCount >= event.Capacity {
+		http.Error(w, "Event is full. Join the waitlist instead.", http.StatusForbidden)
+		return
+	}
+
+	// Proceed to create RSVP
 	newRSVP := RSVP_model{
 		UserID:  user.ID,
 		EventID: event.ID,
@@ -471,6 +522,16 @@ func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		return
 	}
 
+	// Try promoting the first waitlisted user
+	var nextInLine WaitlistEntry
+	if err := db.Where("event_id = ?", event.ID).Order("created_at asc").First(&nextInLine).Error; err == nil {
+		// Create RSVP
+		newRSVP := RSVP_model{UserID: nextInLine.UserID, EventID: nextInLine.EventID}
+		db.Create(&newRSVP)
+		// Remove from waitlist
+		db.Delete(&nextInLine)
+	}
+
 	// Count total RSVPs for the event.
 	var count int
 	db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
@@ -479,6 +540,62 @@ func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":    "RSVP canceled successfully",
 		"rsvp_count": count,
+	})
+}
+
+func JoinWaitlist(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
+	vars := mux.Vars(r)
+	eventID := vars["id"]
+
+	var event Event
+	if err := db.First(&event, eventID).Error; err != nil {
+		http.Error(w, "Event not found", http.StatusNotFound)
+		return
+	}
+
+	var tokenString string
+	authHeader := r.Header.Get("Authorization")
+	fmt.Sscanf(authHeader, "Bearer %s", &tokenString)
+
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		http.Error(w, "Invalid token", http.StatusUnauthorized)
+		return
+	}
+	claims := token.Claims.(jwt.MapClaims)
+	userID := uint(claims["user_id"].(float64))
+
+	var user User
+	if err := db.First(&user, userID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusUnauthorized)
+		return
+	}
+
+	var input struct {
+		Email string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Prevent duplicates
+	var existing WaitlistEntry
+	if err := db.Where("user_id = ? AND event_id = ?", userID, event.ID).First(&existing).Error; err == nil {
+		http.Error(w, "Already in waitlist", http.StatusBadRequest)
+		return
+	}
+
+	entry := WaitlistEntry{UserID: userID, EventID: event.ID}
+	if err := db.Create(&entry).Error; err != nil {
+		http.Error(w, "Failed to join waitlist", http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Added to waitlist",
 	})
 }
 
@@ -600,6 +717,10 @@ func main() {
 	r.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) { RSVP(w, r, db) }).Methods("POST")
 	// Cancel RSVP route.
 	r.HandleFunc("/events/{id}/cancel-rsvp", func(w http.ResponseWriter, r *http.Request) { CancelRSVP(w, r, db) }).Methods("POST")
+	// Waitlist route
+	r.HandleFunc("/events/{id}/waitlist", func(w http.ResponseWriter, r *http.Request) {
+		JoinWaitlist(w, r, db)
+	}).Methods("POST")
 
 	// Authentication routes.
 	r.HandleFunc("/signup", func(w http.ResponseWriter, r *http.Request) { SignUp(w, r, db) }).Methods("POST")
