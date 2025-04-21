@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import "./EventList.css";
+import EventComments from "./EventComments";
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
   const [rsvps, setRsvps] = useState({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [visibleComments, setVisibleComments] = useState({}); // 🆕
 
   useEffect(() => {
     fetchEvents();
@@ -15,21 +17,24 @@ const EventList = () => {
   const fetchEvents = () => {
     const token = localStorage.getItem("jwt_token");
     axios.get("http://localhost:8080/events", {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${token}` },
     })
-    .then(response => {
-      const eventsWithRSVPStatus = response.data.map(event => ({
-        ...event,
-        userHasRSVP: event.user_has_rsvp,
-        rsvpCount: event.rsvp_count,
-        capacity: typeof event.Capacity === "number" ? event.Capacity :
-                  typeof event.capacity === "number" ? event.capacity : undefined,
-      }));
-      setEvents(eventsWithRSVPStatus);
-    })
-    .catch(error => {
-      console.error("Error fetching events:", error);
-    });
+      .then(response => {
+        const eventsWithRSVPStatus = response.data.map(event => ({
+          ...event,
+          userHasRSVP: event.user_has_rsvp,
+          rsvpCount: event.rsvp_count,
+          capacity: typeof event.Capacity === "number"
+            ? event.Capacity
+            : typeof event.capacity === "number"
+              ? event.capacity
+              : undefined,
+        }));
+        setEvents(eventsWithRSVPStatus);
+      })
+      .catch(error => {
+        console.error("Error fetching events:", error);
+      });
   };
 
   const handleDelete = (eventId) => {
@@ -58,7 +63,7 @@ const EventList = () => {
           ? {
               ...event,
               userHasRSVP: !isRSVPd,
-              rsvpCount: isRSVPd ? event.rsvpCount - 1 : event.rsvpCount + 1
+              rsvpCount: isRSVPd ? event.rsvpCount - 1 : event.rsvpCount + 1,
             }
           : event
       )
@@ -102,7 +107,7 @@ const EventList = () => {
     }
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `http://localhost:8080/events/${eventId}/waitlist`,
         { email },
         { headers: { Authorization: `Bearer ${token}` } }
@@ -112,6 +117,14 @@ const EventList = () => {
       console.error("Waitlist error:", err);
       alert("❌ Failed to join waitlist.");
     }
+  };
+
+  // 🆕 Toggle comment visibility
+  const toggleComments = (eventId) => {
+    setVisibleComments((prev) => ({
+      ...prev,
+      [eventId]: !prev[eventId],
+    }));
   };
 
   const filteredEvents = events.filter((event) =>
@@ -158,6 +171,17 @@ const EventList = () => {
                   <button onClick={() => handleRSVP(event.ID, false)} className="edit-btn">RSVP</button>
                 )}
               </div>
+
+              {/* Toggle Comments Button */}
+              <button
+                onClick={() => toggleComments(event.ID)}
+                className="toggle-comments-btn"
+              >
+                💬 {visibleComments[event.ID] ? "Hide Comments" : "Show Comments"}
+              </button>
+
+              {/* Conditionally render comments */}
+              {visibleComments[event.ID] && <EventComments eventId={event.ID} />}
             </div>
           ))}
         </div>
@@ -167,6 +191,3 @@ const EventList = () => {
 };
 
 export default EventList;
-
-
-

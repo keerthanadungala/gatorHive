@@ -1,0 +1,123 @@
+.comment-box {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border: 2px solid var(--uf-orange);
+    border-radius: var(--border-radius);
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden; /* ✅ clips any child overflow like shadows */
+  }
+  
+  
+  /* Section Title */
+  .comment-box h4 {
+    color: var(--uf-blue);
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  /* Emoji Icon (optional) */
+  .comment-box h4::before {
+    content: "💬";
+    font-size: 1.2rem;
+  }
+  
+  .comment-box textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 0.8rem 1rem;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius);
+    background-color: #f9f9f9;
+    resize: vertical;
+    box-sizing: border-box; /* ✅ ensures padding doesn’t overflow */
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    display: block; /* ✅ no inline behavior */
+  }
+  
+  
+  .comment-box textarea:focus {
+    border-color: var(--uf-orange);
+    outline: none; /* important! removes the ugly browser focus ring */
+    box-shadow: 0 0 4px rgba(250, 70, 22, 0.2); /* soft orange glow */
+  }
+  
+  
+  /* Submit Button */
+  .comment-box button[type="submit"] {
+    background-color: var(--uf-blue);
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    padding: 0.6rem 1.4rem;
+    font-weight: bold;
+    font-size: 16px;
+    margin-top: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+  }
+  
+  .comment-box button[type="submit"]:hover {
+    background-color: var(--uf-orange);
+    transform: translateY(-1px);
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Comment List */
+  .comment-box ul {
+    list-style: none;
+    padding: 0;
+    margin-top: 1.5rem;
+  }
+  
+  .comment-box li {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: var(--light-gray);
+    border-radius: var(--border-radius);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  }
+  
+  /* Author Style */
+  .author {
+    font-weight: bold;
+    color: var(--uf-orange);
+    margin-bottom: 0.25rem;
+  }
+  
+  /* Comment Metadata + Delete button */
+  .comment-meta {
+    font-size: 0.8rem;
+    color: #666;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+  
+  /* Delete Button inside comment */
+  .delete-btnn {
+    background: none;
+    border: none;
+    color: red;
+    font-weight: bold;
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+  }
+  
+  .delete-btnn:hover {
+    text-decoration: underline;
+  }
+  /* Separate comment content block */
+.comment-content {
+    font-size: 16px;
+    color: #111;
+    margin-top: 0.25rem;
+  }
+  
