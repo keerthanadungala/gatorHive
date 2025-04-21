@@ -85,6 +85,11 @@ const EventList = () => {
             : event
         )
       );
+      if (isRSVPd) {
+        alert("❌ Your RSVP has been cancelled.\n📧 A confirmation email was sent.");
+      } else {
+        alert("✅ You have successfully RSVPed to the event.\n📧 A confirmation email has been sent.");
+      }
     } catch (error) {
       console.error("RSVP error:", error);
       setRsvps(prev => ({ ...prev, [eventId]: isRSVPd }));
