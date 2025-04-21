@@ -21,14 +21,14 @@ const EventList = () => {
     })
       .then(response => {
         const eventsWithRSVPStatus = response.data.map(event => ({
-          ...event,
-          userHasRSVP: event.user_has_rsvp,
+          ID: event.ID,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          location: event.location,
           rsvpCount: event.rsvp_count,
-          capacity: typeof event.Capacity === "number"
-            ? event.Capacity
-            : typeof event.capacity === "number"
-              ? event.capacity
-              : undefined,
+          capacity: event.capacity,
+          userHasRSVP: event.user_has_rsvp || false,
         }));
         setEvents(eventsWithRSVPStatus);
       })
@@ -128,9 +128,9 @@ const EventList = () => {
   };
 
   const filteredEvents = events.filter((event) =>
-    event.Title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.Location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    event.Description?.toLowerCase().includes(searchQuery.toLowerCase())
+    event.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    event.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -151,10 +151,10 @@ const EventList = () => {
         <div className="event-grid">
           {filteredEvents.map((event) => (
             <div key={event.ID} className="event-card">
-              <h3 className="event-title">{event.Title}</h3>
-              <p className="event-date">📅 {event.Date.split("T")[0]} | ⏰ {event.Date.split("T")[1]?.slice(0, 5)}</p>
-              <p className="event-location">📍 {event.Location}</p>
-              <p className="event-description">{event.Description}</p>
+              <h3 className="event-title">{event.title}</h3>
+              <p className="event-date">📅 {event.date.split("T")[0]} | ⏰ {event.date.split("T")[1]?.slice(0, 5)}</p>
+              <p className="event-location">📍 {event.location}</p>
+              <p className="event-description">{event.description}</p>
               <p className="event-rsvp-count">
                 👥 RSVPs: {event.rsvpCount ?? 0} / {event.capacity ?? "Not Set"}
               </p>

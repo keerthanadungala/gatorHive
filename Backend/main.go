@@ -18,10 +18,11 @@ import (
 // Event model
 type Event struct {
 	gorm.Model
-	Title       string
-	Description string
-	Date        time.Time
-	Location    string
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Date        time.Time `json:"date"`
+	Location    string    `json:"location"`
+	Capacity    int       `json:"capacity"`
 }
 
 // User model
@@ -74,6 +75,7 @@ func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 	type EventResponse struct {
 		Event
 		RSVPCount int `json:"rsvp_count"`
+		Capacity  int `json:"capacity"`
 	}
 
 	var responses []EventResponse
@@ -83,6 +85,7 @@ func GetEvents(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		responses = append(responses, EventResponse{
 			Event:     event,
 			RSVPCount: count,
+			Capacity:  event.Capacity,
 		})
 	}
 
@@ -103,6 +106,11 @@ func CreateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		event.Date = time.Now()
 	}
 
+	if event.Capacity < 0 {
+		http.Error(w, "Guest count cannot be negative", http.StatusBadRequest)
+		return
+	}
+
 	db.Create(&event)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -120,11 +128,23 @@ func UpdateEvent(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		return
 	}
 
-	err := json.NewDecoder(r.Body).Decode(&event)
+	var updatedEvent Event
+	err := json.NewDecoder(r.Body).Decode(&updatedEvent)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	if updatedEvent.Capacity < 0 {
+		http.Error(w, "Guest count cannot be negative", http.StatusBadRequest)
+		return
+	}
+
+	event.Title = updatedEvent.Title
+	event.Description = updatedEvent.Description
+	event.Date = updatedEvent.Date
+	event.Location = updatedEvent.Location
+	event.Capacity = updatedEvent.Capacity
 
 	db.Save(&event)
 
