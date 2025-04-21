@@ -45,7 +45,10 @@ describe("EventUpdate Component", () => {
     fireEvent.change(screen.getByLabelText(/Time:/i), { target: { value: "10:00" } });
     fireEvent.change(screen.getByLabelText(/Location:/i), { target: { value: "Updated Location" } });
     fireEvent.change(screen.getByLabelText(/Description:/i), { target: { value: "Updated description." } });
-
+    fireEvent.change(screen.getByLabelText(/capacity/i), {
+      target: { value: "100" },
+    });
+    
 
     fireEvent.click(screen.getByRole("button", { name: /Update Event/i }));
 
