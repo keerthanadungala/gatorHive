@@ -14,12 +14,12 @@ const FullCalendarView = () => {
       .then((res) => {
         const mapped = res.data.map((event) => ({
           id: event.ID,
-          title: event.Title,
-          date: event.Date,
+          title: event.title,
+          date: event.date.split("T")[0], // FullCalendar expects just the date for all-day events
           extendedProps: {
-            location: event.Location,
-            description: event.Description,
-            time: event.Date.split("T")[1]?.slice(0, 5),
+            location: event.location,
+            description: event.description,
+            time: event.date.split("T")[1]?.slice(0, 5),
           }
         }));
         setEvents(mapped);
