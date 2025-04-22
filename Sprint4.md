@@ -7,17 +7,14 @@ During Sprint 4, We focused on enhancing the user experience by implementing thr
 ## Features Implemented
 
 1. **Search Functionality**
-   - **File:** `EventList.jsx`
    - Added a search input to filter events by **title**, **location**, or **description**.
    - Users can now easily find relevant events without scrolling through all items.
 
 2. **Comments / Discussions**
-   - **Files:** `EventComments.jsx`, modified `EventList.jsx`
    - Users can **view** and **toggle** comments for each event using a "Show/Hide Comments" button.
    - Uses `GET /events/:id/comments` to fetch and display comment threads.
 
 3. **Waitlist Functionality**
-   - **File:** `EventList.jsx`
    - When an event reaches full capacity, users are given the option to **"Join Waitlist"**.
    - Waitlisted status is shown with a disabled button if already joined.
 
