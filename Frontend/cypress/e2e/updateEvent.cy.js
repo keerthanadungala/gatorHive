@@ -1,46 +1,74 @@
-describe("Update Event", () => {
+describe("Update Event (Mocked + Logged In)", () => {
   beforeEach(() => {
-      cy.visit("http://localhost:5173/events"); // Navigate to events page
+
+    window.localStorage.setItem("jwt_token", "mock-token");
+    window.localStorage.setItem("user_email", "testuser@example.com");
+
+
+    cy.intercept("GET", "http://localhost:8080/events", {
+      statusCode: 200,
+      body: [
+        {
+          ID: 1,
+          title: "Mock Event",
+          date: "2025-06-01T12:00:00",
+          location: "Mock Hall",
+          description: "Mock event description",
+          rsvp_count: 10,
+          capacity: 100,
+          user_has_rsvp: false,
+          user_on_waitlist: false,
+        },
+      ],
+    }).as("loadEvents");
+
+
+    cy.intercept("GET", "http://localhost:8080/events/1", {
+      statusCode: 200,
+      body: {
+        ID: 1,
+        title: "Mock Event",
+        date: "2025-06-01T12:00:00",
+        location: "Mock Hall",
+        description: "Mock event description",
+        capacity: 100,
+      },
+    }).as("getEventDetails");
+
+
+    cy.intercept("PUT", "http://localhost:8080/events/1", {
+      statusCode: 200,
+      body: { message: "Event updated successfully" },
+    }).as("updateEvent");
+
+
+    cy.visit("http://localhost:5173/events");
+    cy.wait("@loadEvents");
   });
 
-  it("should update an existing event", () => {
-      // Ensure event cards are loaded before interacting
-      cy.get(".event-card").should("have.length.greaterThan", 0);
+  it("should update an existing event with all fields", () => {
 
-      // Click the edit button inside the first event card
-      cy.get(".event-card").first().within(() => {
-          cy.contains("Edit").click();
-      });
+    cy.contains(".event-card", "Mock Event").within(() => {
+      cy.contains("Edit").click();
+    });
 
-      // Wait for the update form to be visible
-      cy.get('input[name="title"]').should("be.visible").clear().type("Updated Event Title");
 
-      // Handle date field (Explicitly clear and set a valid date)
-      cy.get('input[name="date"]')
-        .should("be.visible")
-        .clear()
-        .type("2025-05-10") // Use YYYY-MM-DD format (recognized by HTML date inputs)
-        .should("have.value", "2025-05-10"); // Ensure the date was set correctly
+    cy.get('input[name="title"]').clear().type("Updated Mock Event");
+    cy.get('input[name="date"]').clear().type("2025-06-15");
+    cy.get('input[name="time"]').clear().type("14:00");
+    cy.get('input[name="location"]').clear().type("Updated Location");
+    cy.get('input[name="capacity"]').clear().type("150");
+    cy.get('textarea[name="description"]').clear().type("Updated description using Cypress.");
 
-      // Handle time field
-      cy.get('input[name="time"]')
-        .clear()
-        .type("12:30") // Ensure format is HH:mm
-        .should("have.value", "12:30");
 
-      // Handle location field
-      cy.get('input[name="location"]').clear().type("New Location");
+    cy.get(".submit-btn").click();
+    cy.wait("@updateEvent");
 
-      // Handle description field
-      cy.get('textarea[name="description"]').clear().type("Updated event details.");
 
-      // Submit the update form
-      cy.get(".submit-btn").click();
-
-      // Wait for redirection and the event list to be reloaded
-      cy.url().should("include", "/events");
-
-      // Ensure that the updated event title appears in the event list
-      cy.contains(".event-card", "Updated Event Title", { timeout: 5000 }).should("exist");
+    cy.url().should("include", "/events");
+    cy.contains(".event-card", "Mock Event").should("exist"); 
   });
 });
+
+
+

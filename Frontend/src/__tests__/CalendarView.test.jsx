@@ -1,8 +1,9 @@
-// src/__tests__/CalendarView.test.jsx
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import FullCalendarView from "../pages/FullCalendarView";
 import axios from "axios";
 import { vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
+
 vi.mock("axios");
 
 describe("CalendarView", () => {
@@ -11,19 +12,21 @@ describe("CalendarView", () => {
       data: [
         {
           ID: 1,
-          Title: "Mock Event",
-          Date: "2025-03-30T10:00:00",
-          Location: "Gainesville",
-          Description: "A sample event",
+          title: "Mock Event",
+          date: "2025-03-30T10:00:00",
+          location: "Gainesville",
+          description: "A sample event",
         }
       ]
     });
 
-    render(<FullCalendarView />);
+    render(
+      <MemoryRouter>
+        <FullCalendarView />
+      </MemoryRouter>
+    );
 
-    await waitFor(() => {
-      const event = screen.queryByText(/mock event/i);
-      expect(event).toBeTruthy(); 
-    });
+    const event = await screen.findByText(/mock event/i); 
+    expect(event).toBeInTheDocument();
   });
 });

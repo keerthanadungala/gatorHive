@@ -10,7 +10,7 @@ const EventCreate = ({ setEvents, events }) => {
     time: "",
     location: "",
     description: "",
-    capacity: "", // ✅ Added capacity field
+    capacity: "", 
   });
 
   const [message, setMessage] = useState("");
@@ -43,7 +43,7 @@ const EventCreate = ({ setEvents, events }) => {
         description: eventData.description,
         date: formattedDate,
         location: eventData.location,
-        capacity: parseInt(eventData.capacity), // ✅ Add capacity to request
+        capacity: parseInt(eventData.capacity), 
       };
 
       const response = await axios.post("http://localhost:8080/events", newEvent);
@@ -103,7 +103,7 @@ const EventCreate = ({ setEvents, events }) => {
           <textarea id="description" name="description" value={eventData.description} onChange={handleChange} required></textarea>
         </div>
 
-        {/* ✅ Add Capacity Field */}
+        {/* Add Capacity Field */}
         <div className="form-group">
           <label htmlFor="capacity">Capacity:</label>
           <input id="capacity" type="number" name="capacity" value={eventData.capacity} onChange={handleChange} required />

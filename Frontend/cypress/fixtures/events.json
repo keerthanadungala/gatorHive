@@ -1,0 +1,25 @@
+[
+    {
+      "ID": 1,
+      "title": "Gator Hackathon",
+      "date": "2025-05-01T10:00:00",
+      "location": "UF Campus",
+      "description": "Hackathon event",
+      "rsvp_count": 50,
+      "capacity": 50,
+      "user_has_rsvp": false,
+      "user_on_waitlist": false
+    },
+    {
+      "ID": 2,
+      "title": "AI Workshop",
+      "date": "2025-06-01T12:00:00",
+      "location": "Zoom",
+      "description": "Learn about LLMs",
+      "rsvp_count": 20,
+      "capacity": 100,
+      "user_has_rsvp": false,
+      "user_on_waitlist": false
+    }
+  ]
+  
