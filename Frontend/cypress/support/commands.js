@@ -23,3 +23,9 @@
 //
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
+
+beforeEach(() => {
+    window.localStorage.setItem("jwt_token", "mock-token");
+    window.localStorage.setItem("user_email", "test@ufl.edu");
+  });
+  

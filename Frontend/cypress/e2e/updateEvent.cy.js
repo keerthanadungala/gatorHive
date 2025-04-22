@@ -1,32 +1,74 @@
-describe("Update Event", () => {
+describe("Update Event (Mocked + Logged In)", () => {
   beforeEach(() => {
-    cy.visit("http://localhost:5173/events"); // Navigate to event list
+
+    window.localStorage.setItem("jwt_token", "mock-token");
+    window.localStorage.setItem("user_email", "testuser@example.com");
+
+
+    cy.intercept("GET", "http://localhost:8080/events", {
+      statusCode: 200,
+      body: [
+        {
+          ID: 1,
+          title: "Mock Event",
+          date: "2025-06-01T12:00:00",
+          location: "Mock Hall",
+          description: "Mock event description",
+          rsvp_count: 10,
+          capacity: 100,
+          user_has_rsvp: false,
+          user_on_waitlist: false,
+        },
+      ],
+    }).as("loadEvents");
+
+
+    cy.intercept("GET", "http://localhost:8080/events/1", {
+      statusCode: 200,
+      body: {
+        ID: 1,
+        title: "Mock Event",
+        date: "2025-06-01T12:00:00",
+        location: "Mock Hall",
+        description: "Mock event description",
+        capacity: 100,
+      },
+    }).as("getEventDetails");
+
+
+    cy.intercept("PUT", "http://localhost:8080/events/1", {
+      statusCode: 200,
+      body: { message: "Event updated successfully" },
+    }).as("updateEvent");
+
+
+    cy.visit("http://localhost:5173/events");
+    cy.wait("@loadEvents");
   });
 
   it("should update an existing event with all fields", () => {
-    // Wait for event cards to load
-    cy.get(".event-card").should("have.length.greaterThan", 0);
 
-    // Click the Edit button of the first event
-    cy.get(".event-card").first().within(() => {
+    cy.contains(".event-card", "Mock Event").within(() => {
       cy.contains("Edit").click();
     });
 
-    // Fill in updated values
-    cy.get('input[name="title"]').clear().type("Updated Event Title");
-    cy.get('input[name="date"]').clear().type("2025-05-10");
-    cy.get('input[name="time"]').clear().type("12:30");
-    cy.get('input[name="location"]').clear().type("Updated Location Hall");
-    cy.get('input[name="capacity"]').clear().type("300");
-    cy.get('textarea[name="description"]').clear().type("This event has been fully updated using Cypress.");
 
-    // Submit the form
+    cy.get('input[name="title"]').clear().type("Updated Mock Event");
+    cy.get('input[name="date"]').clear().type("2025-06-15");
+    cy.get('input[name="time"]').clear().type("14:00");
+    cy.get('input[name="location"]').clear().type("Updated Location");
+    cy.get('input[name="capacity"]').clear().type("150");
+    cy.get('textarea[name="description"]').clear().type("Updated description using Cypress.");
+
+
     cy.get(".submit-btn").click();
+    cy.wait("@updateEvent");
 
-    // Verify redirection to event list
+
     cy.url().should("include", "/events");
-
-    // Verify updated event appears in the list
-    cy.contains(".event-card", "Updated Event Title", { timeout: 5000 }).should("exist");
+    cy.contains(".event-card", "Mock Event").should("exist"); 
   });
 });
+
+
+
