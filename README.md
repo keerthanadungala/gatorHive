@@ -85,7 +85,7 @@ cd Backend
 go run main.go
 ```
 
-Runs backend server on [http://localhost:8080](http://localhost:8080)
+Runs backend server on [http://localhost:8080]
 
 
 ---
@@ -103,4 +103,8 @@ npx vitest
 ```bash
 npx cypress open
 ```
+
+## Running backend unit tests
+
+`go test -v`
 
