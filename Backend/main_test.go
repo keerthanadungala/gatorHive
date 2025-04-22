@@ -697,3 +697,144 @@ func TestDeleteComment(t *testing.T) {
 	testDB.Model(&Comment{}).Where("id = ?", c.ID).Count(&count)
 	assert.Equal(t, 0, count)
 }
+
+func TestJoinWaitlist_Success(t *testing.T) {
+	event := Event{
+		Title:       "Waitlist Event",
+		Description: "Event for waitlist",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Hall",
+		Capacity:    0, // Make it full so RSVP can't happen
+	}
+	testDB.Create(&event)
+
+	user := User{
+		Name:     "Waitlist User",
+		Email:    "waitlist_user@example.com",
+		Password: "dummy", // No password check in this test
+	}
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	token, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Email payload (required for waitlist body)
+	body := map[string]string{
+		"email": user.Email,
+	}
+	bodyJSON, _ := json.Marshal(body)
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/waitlist", event.ID), bytes.NewBuffer(bodyJSON))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/waitlist", func(w http.ResponseWriter, r *http.Request) {
+		JoinWaitlist(w, r, testDB)
+	}).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code)
+
+	var resp map[string]string
+	err = json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "Added to waitlist", resp["message"])
+
+	// Check DB
+	var count int
+	testDB.Model(&WaitlistEntry{}).Where("event_id = ? AND user_id = ?", event.ID, user.ID).Count(&count)
+	assert.Equal(t, 1, count)
+
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM waitlist_entries WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+	})
+}
+
+func TestRSVP_EmailSent(t *testing.T) {
+	// Step 1: Setup mock email function (per-test override)
+	emailCalled := false
+	originalSendEmail := sendEmail
+	defer func() { sendEmail = originalSendEmail }() // Restore after test
+
+	sendEmail = func(to, subject, body string) error {
+		emailCalled = true
+		assert.Equal(t, "test@example.com", to)
+		assert.Contains(t, subject, "RSVP")
+		return nil
+	}
+
+	// Step 2: Create test event with capacity > 0
+	event := Event{
+		Title:       "RSVP Email Event",
+		Description: "Testing RSVP email",
+		Date:        time.Now().Add(24 * time.Hour),
+		Location:    "Test Hall",
+		Capacity:    5,
+	}
+	testDB.Create(&event)
+
+	// Step 3: Create test user with hashed password
+	password := "testpassword"
+	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+
+	user := User{
+		Name:     "RSVP Email Tester",
+		Email:    "test@example.com",
+		Password: string(hashedPassword),
+	}
+	testDB.Exec("DELETE FROM users WHERE email = ?", user.Email)
+	testDB.Create(&user)
+
+	// Step 4: Confirm user exists in DB
+	var checkUser User
+	err := testDB.Where("email = ?", user.Email).First(&checkUser).Error
+	assert.NoError(t, err, "User must be created successfully")
+	assert.NotZero(t, checkUser.ID)
+
+	// Step 5: Clean any previous RSVPs or waitlist entries
+	testDB.Exec("DELETE FROM rsvp_models WHERE user_id = ? AND event_id = ?", user.ID, event.ID)
+	testDB.Exec("DELETE FROM waitlist_entries WHERE user_id = ? AND event_id = ?", user.ID, event.ID)
+
+	// Step 6: Generate token for user
+	token, err := generateToken(user.ID)
+	assert.NoError(t, err)
+
+	// Step 7: Create RSVP request with matching email
+	reqData := map[string]string{
+		"email": user.Email,
+	}
+	body, _ := json.Marshal(reqData)
+
+	req, _ := http.NewRequest("POST", fmt.Sprintf("/events/%d/rsvp", event.ID), bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	rr := httptest.NewRecorder()
+	router := mux.NewRouter()
+	router.HandleFunc("/events/{id}/rsvp", func(w http.ResponseWriter, r *http.Request) {
+		RSVP(w, r, testDB)
+	}).Methods("POST")
+	router.ServeHTTP(rr, req)
+
+	// Step 8: Validate response
+	assert.Equal(t, http.StatusOK, rr.Code, "Expected 200 OK for RSVP")
+	assert.True(t, emailCalled, "sendEmail should have been called")
+
+	var resp map[string]interface{}
+	err = json.Unmarshal(rr.Body.Bytes(), &resp)
+	assert.NoError(t, err)
+	assert.Equal(t, "RSVP successful", resp["message"])
+	assert.Equal(t, float64(1), resp["rsvp_count"])
+
+	// Cleanup
+	t.Cleanup(func() {
+		testDB.Exec("DELETE FROM rsvp_models WHERE event_id = ?", event.ID)
+		testDB.Exec("DELETE FROM events WHERE id = ?", event.ID)
+		testDB.Exec("DELETE FROM users WHERE id = ?", user.ID)
+	})
+}

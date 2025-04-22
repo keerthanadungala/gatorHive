@@ -60,12 +60,10 @@ npx vitest
 ```bash
 npx cypress open
 ```
-
 Then choose a spec like `event_create.cy.js` or `comments.cy.js` and click **Run**.
 
 
 ## Backend Sprint 4 
-
 In this sprint, the following tasks were completed:
 
 **Implemented Comment Functionality**
@@ -85,6 +83,23 @@ In this sprint, the following tasks were completed:
     - Endpoint: DELETE /comments/{id}
     - Publicly accessible (no auth checks).
     - Deletes the comment with the specified ID and returns a confirmation message.
+
+**Implemented Waitlist Functionality**
+    -Endpoint: POST /events/{id}/waitlist
+    -Puts user on a waitlist if the event is at capacity. 
+    -Promotes first user on waitlist to RSVP when a user cancels. And moves the next user in the queue to the front.
+    -Prevents duplicate waitlist entries.
+
+**Implemented Event Notifications by email**
+    -RSVP Confirmation: Upon RSVP, a confirmation email is sent to the user with event details.
+    -RSVP Cancellation: On cancelling an RSVP, the user receives a cancellation email.
+    -Emails are sent asynchronously using Go routines.
+    -Email is configured using Gmail SMTP via net/smtp.
+
+**Modified RSVP to send emails**
+    -POST /events/{id}/rsvp: Registers user if slots available and email matches token.
+    -POST /events/{id}/cancel-rsvp: Cancels RSVP, triggers email, promotes waitlisted user.
+    -Included capacity field
 
 ## Unit Tests for Backend
 Below are the unit tests added for this sprint:
@@ -112,3 +127,18 @@ Below are the unit tests added for this sprint:
     - Response body contains { "message": "Comment deleted" }
     - The comment is removed from the database (zero results when querying by its ID).
 
+4. **TestJoinWaitlist_Success**
+    Description: Tests that a user can successfully join the waitlist for an event that has reached its capacity for the API /events/{id}/waitlist endpoint.
+    Assertions:
+    - HTTP status code 200 OK
+    - Response body contains { "message": "Added to waitlist" }
+    - A WaitlistEntry is created in the database for the given user and event.
+
+5. **TestRSVP_EmailSent**
+    Description: Verifies that an email is triggered when a user RSVPs to an event. A mock function replaces sendEmail to track invocation.
+    Assertions:
+    - RSVP is successful and returns 200 OK
+    - Mock sendEmail is called
+    - Email recipient matches the user's email
+    - Email subject contains "RSVP"
+    - rsvp_count in the response is 1

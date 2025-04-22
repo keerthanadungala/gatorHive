@@ -5,15 +5,16 @@ import (
 	"net/smtp"
 )
 
-// Email config (use environment vars in production)
+// Email config (should use env vars in production)
 var (
 	smtpHost    = "smtp.gmail.com"
 	smtpPort    = "587"
-	senderEmail = "gautamvarma1234k@gmail.com"
-	senderPass  = "nasw bnaz advf fokx" // use app-specific password
+	senderEmail = "senderEmail@gmail.com"
+	senderPass  = "senderPassword" // app-specific password
 )
 
-func sendEmail(to string, subject string, body string) error {
+// Default sendEmail function (used in prod)
+var sendEmail = func(to string, subject string, body string) error {
 	auth := smtp.PlainAuth("", senderEmail, senderPass, smtpHost)
 	msg := []byte(fmt.Sprintf("Subject: %s\r\n\r\n%s", subject, body))
 	addr := fmt.Sprintf("%s:%s", smtpHost, smtpPort)
