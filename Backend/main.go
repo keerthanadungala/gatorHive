@@ -439,6 +439,16 @@ func RSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		return
 	}
 
+	go func() {
+		subject := "RSVP Confirmation - " + event.Title
+		body := fmt.Sprintf("Hi %s,\n\nYou've successfully RSVPed for the event: \"%s\" on %s at %s.\nWe're excited to see you there!\nThanks,\nGatorHive Team",
+			user.Name, event.Title, event.Date.Format("02 Jan 2006 15:04"), event.Location)
+
+		if err := sendEmail(user.Email, subject, body); err != nil {
+			log.Printf("Failed to send RSVP email: %v", err)
+		}
+	}()
+
 	// Count total RSVPs for the event.
 	var count int
 	db.Model(&RSVP_model{}).Where("event_id = ?", event.ID).Count(&count)
@@ -521,6 +531,17 @@ func CancelRSVP(w http.ResponseWriter, r *http.Request, db *gorm.DB) {
 		http.Error(w, "Failed to cancel RSVP", http.StatusInternalServerError)
 		return
 	}
+
+	// Send cancellation email in background
+	go func() {
+		subject := "RSVP Cancellation – " + event.Title
+		body := fmt.Sprintf("Hi %s,\n\nYou've successfully cancelled your RSVP for the event: \"%s\" scheduled on %s at %s.\n\nWe hope to see you at future events!\n\n- GatorHive Team",
+			user.Name, event.Title, event.Date.Format("02 Jan 2006 15:04"), event.Location)
+
+		if err := sendEmail(user.Email, subject, body); err != nil {
+			log.Printf("Error sending RSVP cancellation email: %v", err)
+		}
+	}()
 
 	// Try promoting the first waitlisted user
 	var nextInLine WaitlistEntry
