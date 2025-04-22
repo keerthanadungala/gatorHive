@@ -51,7 +51,7 @@ This fosters a stronger, more connected campus community while reflecting the un
 - **Backend**: Go (Gorilla Mux, GORM, SQLite)
 - **Testing**: Vitest, React Testing Library, Cypress
 - **Authentication**: JWT
-- **Storage**: Local Storage for tokens
+- **Storage**: Lightweight, file-based SQLite for quick local development and persistence
 
 ---
 
