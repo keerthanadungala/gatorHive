@@ -30,7 +30,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("failed to connect to test database: %v", err)
 	}
 	// AutoMigrate both Event and User models.
-	testDB.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{})
+	testDB.AutoMigrate(&Event{}, &User{}, &RSVP_model{}, &Comment{}, &WaitlistEntry{})
 
 	code := m.Run()
 
@@ -342,6 +342,7 @@ func TestRSVP_Success(t *testing.T) {
 		Description: "Event for RSVP test",
 		Date:        time.Now().Add(24 * time.Hour),
 		Location:    "Test Venue",
+		Capacity:    10,
 	}
 	testDB.Create(&event)
 
@@ -406,6 +407,7 @@ func TestRSVP_AlreadyRSVPed(t *testing.T) {
 		Description: "Event for RSVP duplicate test",
 		Date:        time.Now().Add(24 * time.Hour),
 		Location:    "Test Venue",
+		Capacity:    10,
 	}
 	testDB.Create(&event)
 
