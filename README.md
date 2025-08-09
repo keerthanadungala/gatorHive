@@ -26,7 +26,7 @@ This fosters a stronger, more connected campus community while reflecting the un
 
 | Name                          | UFID      | Role      |
 |-------------------------------|-----------|-----------|
-| **Harshavardhan Chary Vadla** | 15764530  | Frontend  |
+| **Harshavardhan Chary Vadla** | 15764530  | Frontend/Backend  |
 | **Akash Challa**              | 51281562  | Frontend  |
 | **Gautham Varma Kucharlapati**| 52957224  | Backend   |
 | **Keerthana Dungala**         | 57210215  | Backend   |
